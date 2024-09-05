@@ -32,7 +32,7 @@ pub fn [<$datetime_ty:lower _spi_roundtrip>] () {
         .run(&strat, |datetime| {
             let query = concat!("SELECT ", stringify!($nop_fn), "($1)");
             let builtin_oid = PgOid::BuiltIn(pg_sys::BuiltinOid::from_u32(<$datetime_ty as IntoDatum>::type_oid().as_u32()).unwrap());
-            let args = vec![(builtin_oid, datetime.into_datum())];
+            let args = &[(builtin_oid, datetime.into_datum())];
             let spi_ret: $datetime_ty = Spi::get_one_with_args(query, args).unwrap().unwrap();
             // 5. A condition on which the test is accepted or rejected:
             //    this is easily done via `prop_assert!` and its friends,

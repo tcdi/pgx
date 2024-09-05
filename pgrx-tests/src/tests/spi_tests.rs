@@ -137,7 +137,7 @@ mod tests {
 
         assert!(Spi::run_with_args(
             "SELECT $1 + $2 = 3",
-            Some(vec![
+            Some(&[
                 (PgBuiltInOids::INT4OID.oid(), Some(i.into())),
                 (PgBuiltInOids::INT8OID.oid(), Some(j.into())),
             ]),
@@ -159,7 +159,7 @@ mod tests {
 
         let result = Spi::explain_with_args(
             "SELECT $1 + $2 = 3",
-            Some(vec![
+            Some(&[
                 (PgBuiltInOids::INT4OID.oid(), Some(i.into())),
                 (PgBuiltInOids::INT8OID.oid(), Some(j.into())),
             ]),
@@ -187,7 +187,7 @@ mod tests {
         assert_eq!(
             Spi::get_one_with_args::<i32>(
                 "INSERT INTO tests.null_test VALUES ($1) RETURNING 1",
-                vec![(PgBuiltInOids::UUIDOID.oid(), None)],
+                &[(PgBuiltInOids::UUIDOID.oid(), None)],
             )?
             .unwrap(),
             1
@@ -252,17 +252,16 @@ mod tests {
     #[pg_test]
     #[should_panic(expected = "PreparedStatementArgumentMismatch { expected: 1, got: 0 }")]
     fn test_cursor_prepared_statement_panics_less_args() -> Result<(), pgrx::spi::Error> {
-        test_cursor_prepared_statement_panics_impl(Some([].to_vec()))
+        test_cursor_prepared_statement_panics_impl(Some(&[][..]))
     }
 
     #[pg_test]
     #[should_panic(expected = "PreparedStatementArgumentMismatch { expected: 1, got: 2 }")]
     fn test_cursor_prepared_statement_panics_more_args() -> Result<(), pgrx::spi::Error> {
-        test_cursor_prepared_statement_panics_impl(Some([None, None].to_vec()))
+        test_cursor_prepared_statement_panics_impl(Some(&[None, None]))
     }
-
     fn test_cursor_prepared_statement_panics_impl(
-        args: Option<Vec<Option<pg_sys::Datum>>>,
+        args: Option<&[Option<pg_sys::Datum>]>,
     ) -> Result<(), pgrx::spi::Error> {
         Spi::connect(|mut client| {
             client.update("CREATE TABLE tests.cursor_table (id int)", None, None)?;
@@ -397,7 +396,7 @@ mod tests {
         let rc = Spi::connect(|client| {
             let prepared =
                 client.prepare("SELECT $1", Some(vec![PgOid::BuiltIn(PgBuiltInOids::INT4OID)]))?;
-            client.select(&prepared, None, Some(vec![42.into_datum()]))?.first().get::<i32>(1)
+            client.select(&prepared, None, Some(&[42.into_datum()]))?.first().get::<i32>(1)
         })?;
 
         assert_eq!(42, rc.expect("SPI failed to return proper value"));
@@ -429,7 +428,7 @@ mod tests {
             )
         })?;
         let rc = Spi::connect(|client| {
-            client.select(&prepared, None, Some(vec![42.into_datum()]))?.first().get::<i32>(1)
+            client.select(&prepared, None, Some(&[42.into_datum()]))?.first().get::<i32>(1)
         })?;
 
         assert_eq!(Some(42), rc);

@@ -17,7 +17,7 @@ mod tests {
     fn test_anynumeric_arg() -> Result<(), pgrx::spi::Error> {
         let numeric = Spi::get_one_with_args::<AnyNumeric>(
             "SELECT anynumeric_arg($1);",
-            vec![(PgBuiltInOids::INT4OID.oid(), 123.into_datum())],
+            &[(PgBuiltInOids::INT4OID.oid(), 123.into_datum())],
         )?
         .map(|n| n.normalize().to_string());
 

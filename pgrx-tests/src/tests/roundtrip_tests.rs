@@ -87,7 +87,7 @@ mod tests {
                 let expected: $rtype = Clone::clone(&value);
                 let result: $rtype = Spi::get_one_with_args(
                     &format!("SELECT {}($1)", stringify!(tests.$fname)),
-                    vec![(PgOid::from(<$rtype>::type_oid()), value.into_datum())],
+                    &[(PgOid::from(<$rtype>::type_oid()), value.into_datum())],
                 )?
                 .unwrap();
 
@@ -102,7 +102,7 @@ mod tests {
                 let output: $otype = $output;
                 let result: $otype = Spi::get_one_with_args(
                     &format!("SELECT {}($1)", stringify!(tests.$fname)),
-                    vec![(PgOid::from(<$itype>::type_oid()), input.into_datum())],
+                    &[(PgOid::from(<$itype>::type_oid()), input.into_datum())],
                 )?
                 .unwrap();
 

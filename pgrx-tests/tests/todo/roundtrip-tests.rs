@@ -1,9 +1,9 @@
 fn main() {}
 
 mod tests {
+    use pgrx::prelude::*;
     use std::error::Error;
     use std::ffi::CStr;
-    use pgrx::prelude::*;
 
     #[allow(unused_imports)]
     use crate as pgrx_tests;
@@ -35,7 +35,7 @@ mod tests {
                 let expected: $rtype = Clone::clone(&value);
                 let result: $rtype = Spi::get_one_with_args(
                     &format!("SELECT {}($1)", stringify!(tests.$fname)),
-                    vec![(PgOid::from(<$rtype>::type_oid()), value.into_datum())],
+                    &[(PgOid::from(<$rtype>::type_oid()), value.into_datum())],
                 )?
                 .unwrap();
 

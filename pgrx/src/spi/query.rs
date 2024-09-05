@@ -14,14 +14,14 @@ use crate::pg_sys::{self, PgOid};
 /// one-off statements and prepared statements, but it can potentially
 /// be implemented for other types, provided they can be converted into a query.
 pub trait Query<'conn>: Sized {
-    type Arguments;
+    type Argument;
 
     /// Execute a query given a client and other arguments.
     fn execute(
         self,
         client: &SpiClient<'conn>,
         limit: Option<libc::c_long>,
-        args: Self::Arguments,
+        args: Option<&[Self::Argument]>,
     ) -> SpiResult<SpiTupleTable<'conn>>;
 
     /// Open a cursor for the query.
@@ -29,7 +29,12 @@ pub trait Query<'conn>: Sized {
     /// # Panics
     ///
     /// Panics if a cursor wasn't opened.
-    fn open_cursor(self, client: &SpiClient<'conn>, args: Self::Arguments) -> SpiCursor<'conn> {
+    #[deprecated(since = "0.12.2", note = "undefined behavior")]
+    fn open_cursor(
+        self,
+        client: &SpiClient<'conn>,
+        args: Option<&[Self::Argument]>,
+    ) -> SpiCursor<'conn> {
         self.try_open_cursor(client, args).unwrap()
     }
 
@@ -37,7 +42,7 @@ pub trait Query<'conn>: Sized {
     fn try_open_cursor(
         self,
         client: &SpiClient<'conn>,
-        args: Self::Arguments,
+        args: Option<&[Self::Argument]>,
     ) -> SpiResult<SpiCursor<'conn>>;
 }
 
@@ -60,7 +65,7 @@ pub trait PreparableQuery<'conn>: Query<'conn> {
 
 fn execute<'conn>(
     cmd: &CStr,
-    args: Option<Vec<(PgOid, Option<pg_sys::Datum>)>>,
+    args: Option<&[(PgOid, Option<pg_sys::Datum>)]>,
     limit: Option<libc::c_long>,
 ) -> SpiResult<SpiTupleTable<'conn>> {
     // SAFETY: no concurrent access
@@ -97,7 +102,7 @@ fn execute<'conn>(
 
 fn open_cursor<'conn>(
     cmd: &CStr,
-    args: Option<Vec<(PgOid, Option<pg_sys::Datum>)>>,
+    args: Option<&[(PgOid, Option<pg_sys::Datum>)]>,
 ) -> SpiResult<SpiCursor<'conn>> {
     let args = args.unwrap_or_default();
     let nargs = args.len();
@@ -122,7 +127,7 @@ fn open_cursor<'conn>(
 }
 
 fn args_to_datums(
-    args: Vec<(PgOid, Option<pg_sys::Datum>)>,
+    args: &[(PgOid, Option<pg_sys::Datum>)],
 ) -> (Vec<pg_sys::Oid>, Vec<pg_sys::Datum>, Vec<c_char>) {
     let mut argtypes = Vec::with_capacity(args.len());
     let mut datums = Vec::with_capacity(args.len());
@@ -139,9 +144,9 @@ fn args_to_datums(
     (argtypes, datums, nulls)
 }
 
-fn prepare_datum(datum: Option<pg_sys::Datum>) -> (pg_sys::Datum, std::os::raw::c_char) {
+fn prepare_datum(datum: &Option<pg_sys::Datum>) -> (pg_sys::Datum, std::os::raw::c_char) {
     match datum {
-        Some(datum) => (datum, ' ' as std::os::raw::c_char),
+        Some(datum) => (*datum, ' ' as std::os::raw::c_char),
         None => (pg_sys::Datum::from(0usize), 'n' as std::os::raw::c_char),
     }
 }
@@ -178,14 +183,14 @@ fn prepare<'conn>(
 macro_rules! impl_prepared_query {
     ($t:ident, $s:ident) => {
         impl<'conn> Query<'conn> for &$t {
-            type Arguments = Option<Vec<(PgOid, Option<pg_sys::Datum>)>>;
+            type Argument = (PgOid, Option<pg_sys::Datum>);
 
             #[inline]
             fn execute(
                 self,
                 _client: &SpiClient<'conn>,
                 limit: Option<libc::c_long>,
-                args: Self::Arguments,
+                args: Option<&[Self::Argument]>,
             ) -> SpiResult<SpiTupleTable<'conn>> {
                 execute($s(self).as_ref(), args, limit)
             }
@@ -194,7 +199,7 @@ macro_rules! impl_prepared_query {
             fn try_open_cursor(
                 self,
                 _client: &SpiClient<'conn>,
-                args: Self::Arguments,
+                args: Option<&[Self::Argument]>,
             ) -> SpiResult<SpiCursor<'conn>> {
                 open_cursor($s(self).as_ref(), args)
             }
@@ -262,13 +267,13 @@ impl Drop for OwnedPreparedStatement {
 }
 
 impl<'conn> Query<'conn> for &OwnedPreparedStatement {
-    type Arguments = Option<Vec<Option<pg_sys::Datum>>>;
+    type Argument = <<Self as Deref>::Target as Query<'static>>::Argument;
 
     fn execute(
         self,
         client: &SpiClient<'conn>,
         limit: Option<libc::c_long>,
-        args: Self::Arguments,
+        args: Option<&[Self::Argument]>,
     ) -> SpiResult<SpiTupleTable<'conn>> {
         (&self.0).execute(client, limit, args)
     }
@@ -276,20 +281,20 @@ impl<'conn> Query<'conn> for &OwnedPreparedStatement {
     fn try_open_cursor(
         self,
         client: &SpiClient<'conn>,
-        args: Self::Arguments,
+        args: Option<&[Self::Argument]>,
     ) -> SpiResult<SpiCursor<'conn>> {
         (&self.0).try_open_cursor(client, args)
     }
 }
 
 impl<'conn> Query<'conn> for OwnedPreparedStatement {
-    type Arguments = Option<Vec<Option<pg_sys::Datum>>>;
+    type Argument = <<Self as Deref>::Target as Query<'static>>::Argument;
 
     fn execute(
         self,
         client: &SpiClient<'conn>,
         limit: Option<libc::c_long>,
-        args: Self::Arguments,
+        args: Option<&[Self::Argument]>,
     ) -> SpiResult<SpiTupleTable<'conn>> {
         (&self.0).execute(client, limit, args)
     }
@@ -297,7 +302,7 @@ impl<'conn> Query<'conn> for OwnedPreparedStatement {
     fn try_open_cursor(
         self,
         client: &SpiClient<'conn>,
-        args: Self::Arguments,
+        args: Option<&[Self::Argument]>,
     ) -> SpiResult<SpiCursor<'conn>> {
         (&self.0).try_open_cursor(client, args)
     }
@@ -323,7 +328,7 @@ impl<'conn> PreparedStatement<'conn> {
 
     fn args_to_datums(
         &self,
-        args: <Self as Query<'conn>>::Arguments,
+        args: Option<&[<Self as Query<'conn>>::Argument]>,
     ) -> SpiResult<(Vec<pg_sys::Datum>, Vec<std::os::raw::c_char>)> {
         let args = args.unwrap_or_default();
 
@@ -339,13 +344,13 @@ impl<'conn> PreparedStatement<'conn> {
 }
 
 impl<'conn: 'stmt, 'stmt> Query<'conn> for &'stmt PreparedStatement<'conn> {
-    type Arguments = Option<Vec<Option<pg_sys::Datum>>>;
+    type Argument = Option<pg_sys::Datum>;
 
     fn execute(
         self,
         _client: &SpiClient<'conn>,
         limit: Option<libc::c_long>,
-        args: Self::Arguments,
+        args: Option<&[Self::Argument]>,
     ) -> SpiResult<SpiTupleTable<'conn>> {
         // SAFETY: no concurrent access
         unsafe {
@@ -371,7 +376,7 @@ impl<'conn: 'stmt, 'stmt> Query<'conn> for &'stmt PreparedStatement<'conn> {
     fn try_open_cursor(
         self,
         _client: &SpiClient<'conn>,
-        args: Self::Arguments,
+        args: Option<&[Self::Argument]>,
     ) -> SpiResult<SpiCursor<'conn>> {
         let (mut datums, nulls) = self.args_to_datums(args)?;
 
@@ -391,13 +396,13 @@ impl<'conn: 'stmt, 'stmt> Query<'conn> for &'stmt PreparedStatement<'conn> {
 }
 
 impl<'conn> Query<'conn> for PreparedStatement<'conn> {
-    type Arguments = Option<Vec<Option<pg_sys::Datum>>>;
+    type Argument = Option<pg_sys::Datum>;
 
     fn execute(
         self,
         client: &SpiClient<'conn>,
         limit: Option<libc::c_long>,
-        args: Self::Arguments,
+        args: Option<&[Self::Argument]>,
     ) -> SpiResult<SpiTupleTable<'conn>> {
         (&self).execute(client, limit, args)
     }
@@ -405,7 +410,7 @@ impl<'conn> Query<'conn> for PreparedStatement<'conn> {
     fn try_open_cursor(
         self,
         client: &SpiClient<'conn>,
-        args: Self::Arguments,
+        args: Option<&[Self::Argument]>,
     ) -> SpiResult<SpiCursor<'conn>> {
         (&self).try_open_cursor(client, args)
     }

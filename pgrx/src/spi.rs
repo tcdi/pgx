@@ -261,14 +261,14 @@ impl Spi {
 
     pub fn get_one_with_args<A: FromDatum + IntoDatum>(
         query: &str,
-        args: Vec<(PgOid, Option<pg_sys::Datum>)>,
+        args: &[(PgOid, Option<pg_sys::Datum>)],
     ) -> Result<Option<A>> {
         Spi::connect(|mut client| client.update(query, Some(1), Some(args))?.first().get_one())
     }
 
     pub fn get_two_with_args<A: FromDatum + IntoDatum, B: FromDatum + IntoDatum>(
         query: &str,
-        args: Vec<(PgOid, Option<pg_sys::Datum>)>,
+        args: &[(PgOid, Option<pg_sys::Datum>)],
     ) -> Result<(Option<A>, Option<B>)> {
         Spi::connect(|mut client| {
             client.update(query, Some(1), Some(args))?.first().get_two::<A, B>()
@@ -281,7 +281,7 @@ impl Spi {
         C: FromDatum + IntoDatum,
     >(
         query: &str,
-        args: Vec<(PgOid, Option<pg_sys::Datum>)>,
+        args: &[(PgOid, Option<pg_sys::Datum>)],
     ) -> Result<(Option<A>, Option<B>, Option<C>)> {
         Spi::connect(|mut client| {
             client.update(query, Some(1), Some(args))?.first().get_three::<A, B, C>()
@@ -304,7 +304,7 @@ impl Spi {
     /// The statement runs in read/write mode
     pub fn run_with_args(
         query: &str,
-        args: Option<Vec<(PgOid, Option<pg_sys::Datum>)>>,
+        args: Option<&[(PgOid, Option<pg_sys::Datum>)]>,
     ) -> std::result::Result<(), Error> {
         Spi::connect(|mut client| client.update(query, None, args).map(|_| ()))
     }
@@ -317,7 +317,7 @@ impl Spi {
     /// explain a query with args, returning its result in json form
     pub fn explain_with_args(
         query: &str,
-        args: Option<Vec<(PgOid, Option<pg_sys::Datum>)>>,
+        args: Option<&[(PgOid, Option<pg_sys::Datum>)]>,
     ) -> Result<Json> {
         Ok(Spi::connect(|mut client| {
             client

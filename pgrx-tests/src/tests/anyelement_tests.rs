@@ -17,7 +17,7 @@ mod tests {
     fn test_anyelement_arg() -> Result<(), pgrx::spi::Error> {
         let element = Spi::get_one_with_args::<AnyElement>(
             "SELECT anyelement_arg($1);",
-            vec![(PgBuiltInOids::ANYELEMENTOID.oid(), 123.into_datum())],
+            &[(PgBuiltInOids::ANYELEMENTOID.oid(), 123.into_datum())],
         )?
         .map(|e| e.datum());
 
