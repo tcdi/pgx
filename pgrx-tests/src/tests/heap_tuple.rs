@@ -881,7 +881,7 @@ mod tests {
     fn test_tuple_desc_clone() -> Result<(), spi::Error> {
         let result = Spi::connect(|client| {
             let query = "select * from generate_lots_of_dogs()";
-            client.select(query, None, None).map(|table| table.len())
+            client.select(query, None, &[][..]).map(|table| table.len())
         })?;
         assert_eq!(result, 10_000);
         Ok(())

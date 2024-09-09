@@ -55,7 +55,7 @@ fn calculate_human_years() -> Result<
 
     Spi::connect(|client| {
         let mut results = Vec::new();
-        let tup_table = client.select(query, None, None)?;
+        let tup_table = client.select(query, None, &[][..])?;
 
         for row in tup_table {
             let dog_name = row["dog_name"].value::<String>();
@@ -92,7 +92,7 @@ fn filter_by_breed(
     let args = vec![(PgBuiltInOids::TEXTOID.oid(), breed.into_datum())];
 
     Spi::connect(|client| {
-        let tup_table = client.select(query, None, Some(args))?;
+        let tup_table = client.select(query, None, &args)?;
 
         let filtered = tup_table
             .map(|row| {

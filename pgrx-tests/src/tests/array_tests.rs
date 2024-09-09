@@ -300,7 +300,7 @@ mod tests {
                 .select(
                     "SELECT serde_serialize_array_i32($1)",
                     None,
-                    Some(&[(PgBuiltInOids::INT4ARRAYOID.oid(), owned_vec.as_slice().into_datum())]),
+                    &[(PgBuiltInOids::INT4ARRAYOID.oid(), owned_vec.as_slice().into_datum())],
                 )?
                 .first()
                 .get_one::<Json>()

@@ -238,13 +238,13 @@ impl Spi {
     }
 
     pub fn get_one<A: FromDatum + IntoDatum>(query: &str) -> Result<Option<A>> {
-        Spi::connect(|mut client| client.update(query, Some(1), None)?.first().get_one())
+        Spi::connect(|mut client| client.update(query, Some(1), &[][..])?.first().get_one())
     }
 
     pub fn get_two<A: FromDatum + IntoDatum, B: FromDatum + IntoDatum>(
         query: &str,
     ) -> Result<(Option<A>, Option<B>)> {
-        Spi::connect(|mut client| client.update(query, Some(1), None)?.first().get_two::<A, B>())
+        Spi::connect(|mut client| client.update(query, Some(1), &[][..])?.first().get_two::<A, B>())
     }
 
     pub fn get_three<
@@ -255,7 +255,7 @@ impl Spi {
         query: &str,
     ) -> Result<(Option<A>, Option<B>, Option<C>)> {
         Spi::connect(|mut client| {
-            client.update(query, Some(1), None)?.first().get_three::<A, B, C>()
+            client.update(query, Some(1), &[][..])?.first().get_three::<A, B, C>()
         })
     }
 
@@ -263,16 +263,14 @@ impl Spi {
         query: &str,
         args: &[(PgOid, Option<pg_sys::Datum>)],
     ) -> Result<Option<A>> {
-        Spi::connect(|mut client| client.update(query, Some(1), Some(args))?.first().get_one())
+        Spi::connect(|mut client| client.update(query, Some(1), args)?.first().get_one())
     }
 
     pub fn get_two_with_args<A: FromDatum + IntoDatum, B: FromDatum + IntoDatum>(
         query: &str,
         args: &[(PgOid, Option<pg_sys::Datum>)],
     ) -> Result<(Option<A>, Option<B>)> {
-        Spi::connect(|mut client| {
-            client.update(query, Some(1), Some(args))?.first().get_two::<A, B>()
-        })
+        Spi::connect(|mut client| client.update(query, Some(1), args)?.first().get_two::<A, B>())
     }
 
     pub fn get_three_with_args<
@@ -284,7 +282,7 @@ impl Spi {
         args: &[(PgOid, Option<pg_sys::Datum>)],
     ) -> Result<(Option<A>, Option<B>, Option<C>)> {
         Spi::connect(|mut client| {
-            client.update(query, Some(1), Some(args))?.first().get_three::<A, B, C>()
+            client.update(query, Some(1), args)?.first().get_three::<A, B, C>()
         })
     }
 
@@ -294,7 +292,7 @@ impl Spi {
     ///
     /// The statement runs in read/write mode
     pub fn run(query: &str) -> std::result::Result<(), Error> {
-        Spi::run_with_args(query, None)
+        Spi::run_with_args(query, &[][..])
     }
 
     /// run an arbitrary SQL statement with args.
@@ -304,21 +302,18 @@ impl Spi {
     /// The statement runs in read/write mode
     pub fn run_with_args(
         query: &str,
-        args: Option<&[(PgOid, Option<pg_sys::Datum>)]>,
+        args: &[(PgOid, Option<pg_sys::Datum>)],
     ) -> std::result::Result<(), Error> {
         Spi::connect(|mut client| client.update(query, None, args).map(|_| ()))
     }
 
     /// explain a query, returning its result in json form
     pub fn explain(query: &str) -> Result<Json> {
-        Spi::explain_with_args(query, None)
+        Spi::explain_with_args(query, &[][..])
     }
 
     /// explain a query with args, returning its result in json form
-    pub fn explain_with_args(
-        query: &str,
-        args: Option<&[(PgOid, Option<pg_sys::Datum>)]>,
-    ) -> Result<Json> {
+    pub fn explain_with_args(query: &str, args: &[(PgOid, Option<pg_sys::Datum>)]) -> Result<Json> {
         Ok(Spi::connect(|mut client| {
             client
                 .update(&format!("EXPLAIN (format json) {query}"), None, args)?
@@ -343,7 +338,7 @@ impl Spi {
     /// use pgrx::prelude::*;
     /// # fn foo() -> spi::Result<Option<String>> {
     /// let name = Spi::connect(|client| {
-    ///     client.select("SELECT 'Bob'", None, None)?.first().get_one()
+    ///     client.select("SELECT 'Bob'", None, &[][..])?.first().get_one()
     /// })?;
     /// assert_eq!(name, Some("Bob"));
     /// # return Ok(name.map(str::to_string))

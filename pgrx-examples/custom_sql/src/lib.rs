@@ -89,7 +89,7 @@ mod tests {
         let buf = Spi::connect(|client| {
             Ok::<_, spi::Error>(
                 client
-                    .select("SELECT * FROM extension_sql", None, None)?
+                    .select("SELECT * FROM extension_sql", None, &[][..])?
                     .flat_map(|tup| {
                         tup.get_datum_by_ordinal(1)
                             .ok()
