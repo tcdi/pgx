@@ -191,7 +191,7 @@ mod tests {
 
     use super::ArrayTestEnum;
     use pgrx::prelude::*;
-    use pgrx::{IntoDatum, Json};
+    use pgrx::Json;
     use serde_json::json;
 
     #[pg_test]
@@ -300,7 +300,7 @@ mod tests {
                 .select(
                     "SELECT serde_serialize_array_i32($1)",
                     None,
-                    &[(PgBuiltInOids::INT4ARRAYOID.oid(), owned_vec.as_slice().into_datum())],
+                    &[owned_vec.as_slice().into()],
                 )?
                 .first()
                 .get_one::<Json>()

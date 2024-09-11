@@ -157,6 +157,35 @@ impl<'src> Datum<'src> {
     }
 }
 
+pub struct DatumWithOid<'src> {
+    datum: Option<Datum<'src>>,
+    oid: pg_sys::Oid,
+}
+
+impl<'src> DatumWithOid<'src> {
+    pub fn new<T: IntoDatum>(value: T, oid: pg_sys::Oid) -> Self {
+        Self { datum: value.into_datum().map(|d| Datum(d, PhantomData::default())), oid }
+    }
+
+    pub fn null<T: IntoDatum>() -> Self {
+        Self { datum: None, oid: T::type_oid() }
+    }
+
+    pub fn datum(&self) -> Option<Datum<'src>> {
+        self.datum.as_ref().map(|d| Datum(d.0, PhantomData::default()))
+    }
+
+    pub fn oid(&self) -> pg_sys::Oid {
+        self.oid
+    }
+}
+
+impl<'src, T: IntoDatum> From<T> for DatumWithOid<'src> {
+    fn from(value: T) -> Self {
+        Self::new(value, T::type_oid())
+    }
+}
+
 /// A tagging trait to indicate a user type is also meant to be used by Postgres
 /// Implemented automatically by `#[derive(PostgresType)]`
 pub trait PostgresType {}

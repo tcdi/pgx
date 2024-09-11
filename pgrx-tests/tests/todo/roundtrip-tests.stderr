@@ -79,7 +79,7 @@ error[E0277]: the trait bound `Vec<Option<&[u8]>>: FromDatum` is not satisfied
 36 |                   let result: $rtype = Spi::get_one_with_args(
    |  ______________________________________^
 37 | |                     &format!("SELECT {}($1)", stringify!(tests.$fname)),
-38 | |                     &[(PgOid::from(<$rtype>::type_oid()), value.into_datum())],
+38 | |                     &[value.into()],
 39 | |                 )?
    | |_________________^ the trait `FromDatum` is not implemented for `Vec<Option<&[u8]>>`
 ...
@@ -109,7 +109,7 @@ error[E0277]: the trait bound `Vec<Option<&str>>: FromDatum` is not satisfied
 36 |                   let result: $rtype = Spi::get_one_with_args(
    |  ______________________________________^
 37 | |                     &format!("SELECT {}($1)", stringify!(tests.$fname)),
-38 | |                     &[(PgOid::from(<$rtype>::type_oid()), value.into_datum())],
+38 | |                     &[value.into()],
 39 | |                 )?
    | |_________________^ the trait `FromDatum` is not implemented for `Vec<Option<&str>>`
 ...
@@ -164,7 +164,7 @@ error[E0277]: the trait bound `Vec<Option<&CStr>>: FromDatum` is not satisfied
 36 |                   let result: $rtype = Spi::get_one_with_args(
    |  ______________________________________^
 37 | |                     &format!("SELECT {}($1)", stringify!(tests.$fname)),
-38 | |                     &[(PgOid::from(<$rtype>::type_oid()), value.into_datum())],
+38 | |                     &[value.into()],
 39 | |                 )?
    | |_________________^ the trait `FromDatum` is not implemented for `Vec<Option<&CStr>>`
 ...

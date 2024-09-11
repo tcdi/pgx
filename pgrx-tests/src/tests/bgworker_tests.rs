@@ -27,11 +27,7 @@ pub extern "C" fn bgworker(arg: pg_sys::Datum) {
             Spi::run("CREATE TABLE tests.bgworker_test (v INTEGER);")?;
             Spi::connect(|mut client| {
                 client
-                    .update(
-                        "INSERT INTO tests.bgworker_test VALUES ($1);",
-                        None,
-                        &[(PgOid::BuiltIn(PgBuiltInOids::INT4OID), arg.into_datum())],
-                    )
+                    .update("INSERT INTO tests.bgworker_test VALUES ($1);", None, &[arg.into()])
                     .map(|_| ())
             })
         })
@@ -61,10 +57,7 @@ pub extern "C" fn bgworker_return_value(arg: pg_sys::Datum) {
     let val = if arg > 0 {
         BackgroundWorker::transaction(|| {
             Spi::run("CREATE TABLE tests.bgworker_test_return (v INTEGER);")?;
-            Spi::get_one_with_args::<i32>(
-                "SELECT $1",
-                &[(PgOid::BuiltIn(PgBuiltInOids::INT4OID), arg.into_datum())],
-            )
+            Spi::get_one_with_args::<i32>("SELECT $1", &[arg.into()])
         })
         .expect("bgworker transaction failed")
         .unwrap()
@@ -74,12 +67,8 @@ pub extern "C" fn bgworker_return_value(arg: pg_sys::Datum) {
     while BackgroundWorker::wait_latch(Some(Duration::from_millis(100))) {}
     BackgroundWorker::transaction(|| {
         Spi::connect(|mut c| {
-            c.update(
-                "INSERT INTO tests.bgworker_test_return VALUES ($1)",
-                None,
-                &[(PgOid::BuiltIn(PgBuiltInOids::INT4OID), val.into_datum())],
-            )
-            .map(|_| ())
+            c.update("INSERT INTO tests.bgworker_test_return VALUES ($1)", None, &[val.into()])
+                .map(|_| ())
         })
     })
     .expect("bgworker transaction failed");

@@ -79,10 +79,7 @@ mod tests {
     fn test_json_arg() -> Result<(), pgrx::spi::Error> {
         let json = Spi::get_one_with_args::<Json>(
             "SELECT json_arg($1);",
-            &[(
-                PgBuiltInOids::JSONOID.oid(),
-                Json(serde_json::json!({ "foo": "bar" })).into_datum(),
-            )],
+            &[Json(serde_json::json!({ "foo": "bar" })).into()],
         )?
         .expect("json was null");
 
@@ -95,10 +92,7 @@ mod tests {
     fn test_jsonb_arg() -> Result<(), pgrx::spi::Error> {
         let json = Spi::get_one_with_args::<JsonB>(
             "SELECT jsonb_arg($1);",
-            &[(
-                PgBuiltInOids::JSONBOID.oid(),
-                JsonB(serde_json::json!({ "foo": "bar" })).into_datum(),
-            )],
+            &[JsonB(serde_json::json!({ "foo": "bar" })).into()],
         )?
         .expect("json was null");
 

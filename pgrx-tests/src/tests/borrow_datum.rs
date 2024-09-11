@@ -30,7 +30,7 @@ macro_rules! clonetrip_test {
             let expected: $rtype = $expected;
             let result: $rtype = Spi::get_one_with_args(
                 &format!("SELECT {}($1)", stringify!(tests.$fname)),
-                &[(PgOid::from(<$rtype>::type_oid()), expected.into_datum())],
+                &[expected.into()],
             )?
             .unwrap();
 
@@ -44,7 +44,7 @@ macro_rules! clonetrip_test {
             let value: $own_ty = $value;
             let result: $own_ty = Spi::get_one_with_args(
                 &format!("SELECT {}($1)", stringify!(tests.$fname)),
-                &[(PgOid::from(<$ref_ty>::type_oid()), value.into_datum())],
+                &[value.into()],
             )?
             .unwrap();
 

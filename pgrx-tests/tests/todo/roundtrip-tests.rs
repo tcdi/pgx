@@ -35,7 +35,7 @@ mod tests {
                 let expected: $rtype = Clone::clone(&value);
                 let result: $rtype = Spi::get_one_with_args(
                     &format!("SELECT {}($1)", stringify!(tests.$fname)),
-                    &[(PgOid::from(<$rtype>::type_oid()), value.into_datum())],
+                    &[value.into()],
                 )?
                 .unwrap();
 

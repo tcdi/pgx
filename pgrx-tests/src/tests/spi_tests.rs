@@ -12,7 +12,8 @@
 mod tests {
     #[allow(unused_imports)]
     use crate as pgrx_tests;
-    use pgrx::datum::IntoDatum;
+    use pgrx::datum::DatumWithOid;
+    use pgrx::Uuid;
     use std::error::Error;
 
     use pgrx::prelude::*;
@@ -138,14 +139,7 @@ mod tests {
         let i = 1 as i32;
         let j = 2 as i64;
 
-        assert!(Spi::run_with_args(
-            "SELECT $1 + $2 = 3",
-            &[
-                (PgBuiltInOids::INT4OID.oid(), Some(i.into())),
-                (PgBuiltInOids::INT8OID.oid(), Some(j.into())),
-            ],
-        )
-        .is_ok());
+        assert!(Spi::run_with_args("SELECT $1 + $2 = 3", &[i.into(), j.into(),],).is_ok());
     }
 
     #[pg_test]
@@ -160,13 +154,7 @@ mod tests {
         let i = 1 as i32;
         let j = 2 as i64;
 
-        let result = Spi::explain_with_args(
-            "SELECT $1 + $2 = 3",
-            &[
-                (PgBuiltInOids::INT4OID.oid(), Some(i.into())),
-                (PgBuiltInOids::INT8OID.oid(), Some(j.into())),
-            ],
-        )?;
+        let result = Spi::explain_with_args("SELECT $1 + $2 = 3", &[i.into(), j.into()])?;
 
         assert!(result.0.get(0).unwrap().get("Plan").is_some());
         Ok(())
@@ -190,7 +178,7 @@ mod tests {
         assert_eq!(
             Spi::get_one_with_args::<i32>(
                 "INSERT INTO tests.null_test VALUES ($1) RETURNING 1",
-                &[(PgBuiltInOids::UUIDOID.oid(), None)],
+                &[DatumWithOid::null::<Uuid>()],
             )?
             .unwrap(),
             1
@@ -255,11 +243,14 @@ mod tests {
     #[pg_test]
     #[should_panic(expected = "PreparedStatementArgumentMismatch { expected: 1, got: 2 }")]
     fn test_cursor_prepared_statement_panics_more_args() -> Result<(), pgrx::spi::Error> {
-        test_cursor_prepared_statement_panics_impl(&[None, None])
+        test_cursor_prepared_statement_panics_impl(&[
+            DatumWithOid::null::<i32>(),
+            DatumWithOid::null::<i32>(),
+        ])
     }
 
     fn test_cursor_prepared_statement_panics_impl(
-        args: &[Option<pg_sys::Datum>],
+        args: &[DatumWithOid],
     ) -> Result<(), pgrx::spi::Error> {
         Spi::connect(|mut client| {
             client.update("CREATE TABLE tests.cursor_table (id int)", None, &[][..])?;
@@ -394,7 +385,7 @@ mod tests {
         let rc = Spi::connect(|client| {
             let prepared =
                 client.prepare("SELECT $1", Some(vec![PgOid::BuiltIn(PgBuiltInOids::INT4OID)]))?;
-            client.select(&prepared, None, &[42.into_datum()])?.first().get::<i32>(1)
+            client.select(&prepared, None, &[42.into()])?.first().get::<i32>(1)
         })?;
 
         assert_eq!(42, rc.expect("SPI failed to return proper value"));
@@ -426,7 +417,7 @@ mod tests {
             )
         })?;
         let rc = Spi::connect(|client| {
-            client.select(&prepared, None, &[42.into_datum()])?.first().get::<i32>(1)
+            client.select(&prepared, None, &[42.into()])?.first().get::<i32>(1)
         })?;
 
         assert_eq!(Some(42), rc);

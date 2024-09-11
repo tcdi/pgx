@@ -264,14 +264,8 @@ mod tests {
         let retval = Spi::get_one_with_args::<pgrx::Json>(
             "SELECT FirstJson(value) FROM UNNEST(ARRAY [$1, $2]) as value;",
             &[
-                (
-                    PgBuiltInOids::JSONOID.oid(),
-                    pgrx::Json(serde_json::json!({ "foo": "one" })).into_datum(),
-                ),
-                (
-                    PgBuiltInOids::JSONOID.oid(),
-                    pgrx::Json(serde_json::json!({ "foo": "two" })).into_datum(),
-                ),
+                pgrx::Json(serde_json::json!({ "foo": "one" })).into(),
+                pgrx::Json(serde_json::json!({ "foo": "two" })).into(),
             ],
         )?
         .map(|json| json.0);
@@ -286,14 +280,8 @@ mod tests {
         let retval = Spi::get_one_with_args::<pgrx::JsonB>(
             "SELECT FirstJsonB(value) FROM UNNEST(ARRAY [$1, $2]) as value;",
             &[
-                (
-                    PgBuiltInOids::JSONBOID.oid(),
-                    pgrx::JsonB(serde_json::json!({ "foo": "one" })).into_datum(),
-                ),
-                (
-                    PgBuiltInOids::JSONBOID.oid(),
-                    pgrx::JsonB(serde_json::json!({ "foo": "two" })).into_datum(),
-                ),
+                pgrx::JsonB(serde_json::json!({ "foo": "one" })).into(),
+                pgrx::JsonB(serde_json::json!({ "foo": "two" })).into(),
             ],
         )?
         .map(|json| json.0);
