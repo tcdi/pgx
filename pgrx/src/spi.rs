@@ -258,27 +258,28 @@ impl Spi {
         })
     }
 
-    pub fn get_one_with_args<A: FromDatum + IntoDatum>(
+    pub fn get_one_with_args<'mcx, A: FromDatum + IntoDatum>(
         query: &str,
-        args: &[DatumWithOid],
+        args: &[DatumWithOid<'mcx>],
     ) -> Result<Option<A>> {
         Spi::connect(|mut client| client.update(query, Some(1), args)?.first().get_one())
     }
 
-    pub fn get_two_with_args<A: FromDatum + IntoDatum, B: FromDatum + IntoDatum>(
+    pub fn get_two_with_args<'mcx, A: FromDatum + IntoDatum, B: FromDatum + IntoDatum>(
         query: &str,
-        args: &[DatumWithOid],
+        args: &[DatumWithOid<'mcx>],
     ) -> Result<(Option<A>, Option<B>)> {
         Spi::connect(|mut client| client.update(query, Some(1), args)?.first().get_two::<A, B>())
     }
 
     pub fn get_three_with_args<
+        'mcx,
         A: FromDatum + IntoDatum,
         B: FromDatum + IntoDatum,
         C: FromDatum + IntoDatum,
     >(
         query: &str,
-        args: &[DatumWithOid],
+        args: &[DatumWithOid<'mcx>],
     ) -> Result<(Option<A>, Option<B>, Option<C>)> {
         Spi::connect(|mut client| {
             client.update(query, Some(1), args)?.first().get_three::<A, B, C>()
@@ -299,7 +300,10 @@ impl Spi {
     /// ## Safety
     ///
     /// The statement runs in read/write mode
-    pub fn run_with_args(query: &str, args: &[DatumWithOid]) -> std::result::Result<(), Error> {
+    pub fn run_with_args<'mcx>(
+        query: &str,
+        args: &[DatumWithOid<'mcx>],
+    ) -> std::result::Result<(), Error> {
         Spi::connect(|mut client| client.update(query, None, args).map(|_| ()))
     }
 
@@ -309,7 +313,7 @@ impl Spi {
     }
 
     /// explain a query with args, returning its result in json form
-    pub fn explain_with_args(query: &str, args: &[DatumWithOid]) -> Result<Json> {
+    pub fn explain_with_args<'mcx>(query: &str, args: &[DatumWithOid<'mcx>]) -> Result<Json> {
         Ok(Spi::connect(|mut client| {
             client
                 .update(&format!("EXPLAIN (format json) {query}"), None, args)?

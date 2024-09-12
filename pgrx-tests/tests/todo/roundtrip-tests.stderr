@@ -99,8 +99,8 @@ error[E0277]: the trait bound `Vec<Option<&[u8]>>: FromDatum` is not satisfied
 note: required by a bound in `pgrx::Spi::get_one_with_args`
   --> $WORKSPACE/pgrx/src/spi.rs
    |
-   |     pub fn get_one_with_args<A: FromDatum + IntoDatum>(
-   |                                 ^^^^^^^^^ required by this bound in `Spi::get_one_with_args`
+   |     pub fn get_one_with_args<'mcx, A: FromDatum + IntoDatum>(
+   |                                       ^^^^^^^^^ required by this bound in `Spi::get_one_with_args`
    = note: this error originates in the macro `roundtrip_test` which comes from the expansion of the macro `roundtrip` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: the trait bound `Vec<Option<&str>>: FromDatum` is not satisfied
@@ -128,8 +128,8 @@ error[E0277]: the trait bound `Vec<Option<&str>>: FromDatum` is not satisfied
 note: required by a bound in `pgrx::Spi::get_one_with_args`
   --> $WORKSPACE/pgrx/src/spi.rs
    |
-   |     pub fn get_one_with_args<A: FromDatum + IntoDatum>(
-   |                                 ^^^^^^^^^ required by this bound in `Spi::get_one_with_args`
+   |     pub fn get_one_with_args<'mcx, A: FromDatum + IntoDatum>(
+   |                                       ^^^^^^^^^ required by this bound in `Spi::get_one_with_args`
    = note: this error originates in the macro `roundtrip_test` which comes from the expansion of the macro `roundtrip` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: the trait bound `Vec<Option<&CStr>>: ArgAbi<'_>` is not satisfied
@@ -184,6 +184,6 @@ error[E0277]: the trait bound `Vec<Option<&CStr>>: FromDatum` is not satisfied
 note: required by a bound in `pgrx::Spi::get_one_with_args`
   --> $WORKSPACE/pgrx/src/spi.rs
    |
-   |     pub fn get_one_with_args<A: FromDatum + IntoDatum>(
-   |                                 ^^^^^^^^^ required by this bound in `Spi::get_one_with_args`
+   |     pub fn get_one_with_args<'mcx, A: FromDatum + IntoDatum>(
+   |                                       ^^^^^^^^^ required by this bound in `Spi::get_one_with_args`
    = note: this error originates in the macro `roundtrip_test` which comes from the expansion of the macro `roundtrip` (in Nightly builds, run with -Z macro-backtrace for more info)
