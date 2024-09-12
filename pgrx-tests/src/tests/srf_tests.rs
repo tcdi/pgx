@@ -174,8 +174,7 @@ mod tests {
     #[pg_test]
     fn test_composite_set() {
         let cnt = Spi::connect(|client| {
-            let mut table =
-                client.select("SELECT * FROM example_composite_set()", None, &[])?;
+            let mut table = client.select("SELECT * FROM example_composite_set()", None, &[])?;
 
             let mut expect = 0;
             while table.next().is_some() {
@@ -234,8 +233,7 @@ mod tests {
     #[pg_test]
     fn test_return_empty_setof_iterator() {
         let cnt = Spi::connect(|client| {
-            let table =
-                client.select("SELECT * from return_empty_setof_iterator();", None, &[])?;
+            let table = client.select("SELECT * from return_empty_setof_iterator();", None, &[])?;
 
             Ok::<_, spi::Error>(table.len() as i64)
         });
