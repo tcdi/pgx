@@ -69,7 +69,7 @@ pub extern "C" fn background_worker_main(arg: pg_sys::Datum) {
                 let tuple_table = client.select(
                     "SELECT 'Hi', id, ''||a FROM (SELECT id, 42 from generate_series(1,10) id) a ",
                     None,
-                    &[][..],
+                    &[],
                 )?;
                 for tuple in tuple_table {
                     let a = tuple.get_datum_by_ordinal(1)?.value::<String>()?;

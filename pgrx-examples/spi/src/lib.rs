@@ -48,7 +48,7 @@ fn spi_return_query() -> Result<
 
     Spi::connect(|client| {
         client
-            .select(query, None, &[][..])?
+            .select(query, None, &[])?
             .map(|row| Ok((row["oid"].value()?, row[2].value()?)))
             .collect::<Result<Vec<_>, _>>()
     })
@@ -103,8 +103,7 @@ fn spi_insert_title2(
 #[pg_extern]
 fn issue1209_fixed() -> Result<Option<String>, Box<dyn std::error::Error>> {
     let res = Spi::connect(|c| {
-        let mut cursor =
-            c.try_open_cursor("SELECT 'hello' FROM generate_series(1, 10000)", &[][..])?;
+        let mut cursor = c.try_open_cursor("SELECT 'hello' FROM generate_series(1, 10000)", &[])?;
         let table = cursor.fetch(10000)?;
         table.into_iter().map(|row| row.get::<&str>(1)).collect::<Result<Vec<_>, _>>()
     })?;

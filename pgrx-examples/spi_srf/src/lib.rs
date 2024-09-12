@@ -55,7 +55,7 @@ fn calculate_human_years() -> Result<
 
     Spi::connect(|client| {
         let mut results = Vec::new();
-        let tup_table = client.select(query, None, &[][..])?;
+        let tup_table = client.select(query, None, &[])?;
 
         for row in tup_table {
             let dog_name = row["dog_name"].value::<String>();

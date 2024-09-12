@@ -103,10 +103,10 @@ mod tests {
     fn test_my_some_schema_type() -> Result<(), spi::Error> {
         Spi::connect(|mut c| {
             // "MySomeSchemaType" is in 'some_schema', so it needs to be discoverable
-            c.update("SET search_path TO some_schema,public", None, &[][..])?;
+            c.update("SET search_path TO some_schema,public", None, &[])?;
             assert_eq!(
                 String::from("test"),
-                c.select("SELECT '\"test\"'::MySomeSchemaType", None, &[][..])?
+                c.select("SELECT '\"test\"'::MySomeSchemaType", None, &[])?
                     .first()
                     .get_one::<MySomeSchemaType>()
                     .expect("get_one::<MySomeSchemaType>() failed")
