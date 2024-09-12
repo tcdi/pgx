@@ -89,7 +89,7 @@ fn filter_by_breed(
     */
 
     let query = "SELECT * FROM spi_srf.dog_daycare WHERE dog_breed = $1;";
-    let args = vec![(PgBuiltInOids::TEXTOID.oid(), breed.into_datum())];
+    let args = vec![breed.into()];
 
     Spi::connect(|client| {
         let tup_table = client.select(query, None, &args)?;
