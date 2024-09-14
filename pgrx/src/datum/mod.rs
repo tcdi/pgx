@@ -163,7 +163,7 @@ pub struct DatumWithOid<'src> {
 }
 
 impl<'src> DatumWithOid<'src> {
-    pub fn new<T: IntoDatum>(value: T, oid: pg_sys::Oid) -> Self {
+    pub unsafe fn new<T: IntoDatum>(value: T, oid: pg_sys::Oid) -> Self {
         Self { datum: value.into_datum().map(|d| Datum(d, PhantomData::default())), oid }
     }
 
@@ -182,7 +182,10 @@ impl<'src> DatumWithOid<'src> {
 
 impl<'src, T: IntoDatum> From<T> for DatumWithOid<'src> {
     fn from(value: T) -> Self {
-        Self::new(value, T::type_oid())
+        unsafe {
+            // SAFETY: The oid is provided by the type.
+            Self::new(value, T::type_oid())
+        }
     }
 }
 

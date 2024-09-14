@@ -1,7 +1,7 @@
 use crate::proptest::PgTestRunner;
 use core::ffi;
 use paste::paste;
-use pgrx::{datum::DatumWithOid, prelude::*};
+use pgrx::prelude::*;
 use proptest::prelude::*;
 use TimeWithTimeZone as TimeTz;
 
@@ -31,8 +31,7 @@ pub fn [<$datetime_ty:lower _spi_roundtrip>] () {
     proptest
         .run(&strat, |datetime| {
             let query = concat!("SELECT ", stringify!($nop_fn), "($1)");
-            let builtin_oid = <$datetime_ty as IntoDatum>::type_oid();
-            let args = &[DatumWithOid::new(datetime, builtin_oid)];
+            let args = &[datetime.into()];
             let spi_ret: $datetime_ty = Spi::get_one_with_args(query, args).unwrap().unwrap();
             // 5. A condition on which the test is accepted or rejected:
             //    this is easily done via `prop_assert!` and its friends,
