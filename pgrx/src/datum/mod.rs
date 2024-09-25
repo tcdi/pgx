@@ -204,3 +204,20 @@ impl<'src, T: IntoDatum> From<T> for DatumWithOid<'src> {
 /// A tagging trait to indicate a user type is also meant to be used by Postgres
 /// Implemented automatically by `#[derive(PostgresType)]`
 pub trait PostgresType {}
+
+/// Creates a [`Vec<pg_sys::Oid>`] containing identifiers of the provded types.
+///
+/// # Examples
+///
+/// ```
+/// use pgrx::{oids_of, datum::IntoDatum};
+/// let v = oids_of![i32, f64];
+/// assert_eq!(v[0], i32::type_oid().into());
+/// assert_eq!(v[1], f64::type_oid().into());
+/// ```
+#[macro_export]
+macro_rules! oids_of {
+    ($($t:path),* $(,)?) => ({
+        [$(::pgrx::pg_sys::PgOid::from(<$t>::type_oid())),*]
+    });
+}

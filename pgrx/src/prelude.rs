@@ -29,12 +29,15 @@ pub use crate::pgbox::{AllocatedByPostgres, AllocatedByRust, PgBox, WhoAllocated
 // These could be factored into a temporal type module that could be easily imported for code which works with them.
 // However, reexporting them seems fine for now.
 
-pub use crate::datum::{
-    datetime_support::*, AnyNumeric, Array, ArraySliceError, Date, FromDatum, Interval, IntoDatum,
-    Numeric, PgVarlena, PostgresType, Range, RangeBound, RangeSubType, Time, TimeWithTimeZone,
-    Timestamp, TimestampWithTimeZone, VariadicArray,
-};
 pub use crate::inoutfuncs::{InOutFuncs, PgVarlenaInOutFuncs};
+pub use crate::{
+    datum::{
+        datetime_support::*, AnyNumeric, Array, ArraySliceError, Date, FromDatum, Interval,
+        IntoDatum, Numeric, PgVarlena, PostgresType, Range, RangeBound, RangeSubType, Time,
+        TimeWithTimeZone, Timestamp, TimestampWithTimeZone, VariadicArray,
+    },
+    oids_of,
+};
 
 // Trigger support
 pub use crate::trigger_support::{
