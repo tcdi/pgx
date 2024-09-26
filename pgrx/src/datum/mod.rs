@@ -217,7 +217,10 @@ pub trait PostgresType {}
 /// ```
 #[macro_export]
 macro_rules! oids_of {
-    ($($t:path),* $(,)?) => ({
-        [$(::pgrx::pg_sys::PgOid::from(<$t>::type_oid())),*]
-    });
+    () =>(
+        [$crate::pg_sys::PgOid::Invalid; 0]
+    );
+    ($($t:path),+ $(,)?) => (
+        [$($crate::pg_sys::PgOid::from(<$t>::type_oid())),*]
+    );
 }
