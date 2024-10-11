@@ -21,7 +21,6 @@ mod cursor;
 mod query;
 mod tuple;
 pub use client::SpiClient;
-use client::SpiConnection;
 pub use cursor::SpiCursor;
 pub use query::{OwnedPreparedStatement, PreparedStatement, Query};
 pub use tuple::{SpiHeapTupleData, SpiHeapTupleDataEntry, SpiTupleTable};
@@ -237,13 +236,13 @@ impl Spi {
     }
 
     pub fn get_one<A: FromDatum + IntoDatum>(query: &str) -> Result<Option<A>> {
-        Spi::connect(|mut client| client.update(query, Some(1), &[])?.first().get_one())
+        Spi::connect_mut(|client| client.update(query, Some(1), &[])?.first().get_one())
     }
 
     pub fn get_two<A: FromDatum + IntoDatum, B: FromDatum + IntoDatum>(
         query: &str,
     ) -> Result<(Option<A>, Option<B>)> {
-        Spi::connect(|mut client| client.update(query, Some(1), &[])?.first().get_two::<A, B>())
+        Spi::connect_mut(|client| client.update(query, Some(1), &[])?.first().get_two::<A, B>())
     }
 
     pub fn get_three<
@@ -253,7 +252,7 @@ impl Spi {
     >(
         query: &str,
     ) -> Result<(Option<A>, Option<B>, Option<C>)> {
-        Spi::connect(|mut client| {
+        Spi::connect_mut(|client| {
             client.update(query, Some(1), &[])?.first().get_three::<A, B, C>()
         })
     }
@@ -262,14 +261,14 @@ impl Spi {
         query: &str,
         args: &[DatumWithOid<'mcx>],
     ) -> Result<Option<A>> {
-        Spi::connect(|mut client| client.update(query, Some(1), args)?.first().get_one())
+        Spi::connect_mut(|client| client.update(query, Some(1), args)?.first().get_one())
     }
 
     pub fn get_two_with_args<'mcx, A: FromDatum + IntoDatum, B: FromDatum + IntoDatum>(
         query: &str,
         args: &[DatumWithOid<'mcx>],
     ) -> Result<(Option<A>, Option<B>)> {
-        Spi::connect(|mut client| client.update(query, Some(1), args)?.first().get_two::<A, B>())
+        Spi::connect_mut(|client| client.update(query, Some(1), args)?.first().get_two::<A, B>())
     }
 
     pub fn get_three_with_args<
@@ -281,12 +280,12 @@ impl Spi {
         query: &str,
         args: &[DatumWithOid<'mcx>],
     ) -> Result<(Option<A>, Option<B>, Option<C>)> {
-        Spi::connect(|mut client| {
+        Spi::connect_mut(|client| {
             client.update(query, Some(1), args)?.first().get_three::<A, B, C>()
         })
     }
 
-    /// just run an arbitrary SQL statement.
+    ///  Just run an arbitrary SQL statement.
     ///
     /// ## Safety
     ///
@@ -304,7 +303,7 @@ impl Spi {
         query: &str,
         args: &[DatumWithOid<'mcx>],
     ) -> std::result::Result<(), Error> {
-        Spi::connect(|mut client| client.update(query, None, args).map(|_| ()))
+        Spi::connect_mut(|client| client.update(query, None, args).map(|_| ()))
     }
 
     /// explain a query, returning its result in json form
@@ -314,7 +313,7 @@ impl Spi {
 
     /// explain a query with args, returning its result in json form
     pub fn explain_with_args<'mcx>(query: &str, args: &[DatumWithOid<'mcx>]) -> Result<Json> {
-        Ok(Spi::connect(|mut client| {
+        Ok(Spi::connect_mut(|client| {
             client
                 .update(&format!("EXPLAIN (format json) {query}"), None, args)?
                 .first()
@@ -323,7 +322,7 @@ impl Spi {
         .unwrap())
     }
 
-    /// Execute SPI commands via the provided `SpiClient`.
+    /// Execute SPI read-only commands via the provided `SpiClient`.
     ///
     /// While inside the provided closure, code executes under a short-lived "SPI Memory Context",
     /// and Postgres will completely free that context when this function is finished.
@@ -360,10 +359,51 @@ impl Spi {
     /// ([`pg_sys::SPI_connect()`]) **always** returns a successful response.
     pub fn connect<R, F>(f: F) -> R
     where
-        F: FnOnce(SpiClient<'_>) -> R, /* TODO: redesign this with 2 lifetimes:
-                                       - 'conn ~= CurrentMemoryContext after connection
-                                       - 'ret ~= SPI_palloc's context
-                                       */
+        F: FnOnce(&SpiClient<'_>) -> R,
+    {
+        Self::connect_mut(|client| f(client))
+    }
+
+    /// Execute SPI mutating commands via the provided `SpiClient`.
+    ///
+    /// While inside the provided closure, code executes under a short-lived "SPI Memory Context",
+    /// and Postgres will completely free that context when this function is finished.
+    ///
+    /// pgrx' SPI API endeavors to return Datum values from functions like `::get_one()` that are
+    /// automatically copied into the into the `CurrentMemoryContext` at the time of this
+    /// function call.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,no_run
+    /// use pgrx::prelude::*;
+    /// # fn foo() -> spi::Result<()> {
+    /// Spi::connect_mut(|client| {
+    ///     client.update("INSERT INTO users VALUES ('Bob')", None, &[])?;
+    ///    Ok(())
+    /// })
+    /// # }
+    /// ```
+    ///
+    /// Note that `SpiClient` is scoped to the connection lifetime and cannot be returned.  The
+    /// following code will not compile:
+    ///
+    /// ```rust,compile_fail
+    /// use pgrx::prelude::*;
+    /// let cant_return_client = Spi::connect(|client| client);
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if for some reason it's unable to "connect" to Postgres' SPI
+    /// system.  At the time of this writing, that's actually impossible as the underlying function
+    /// ([`pg_sys::SPI_connect()`]) **always** returns a successful response.
+    pub fn connect_mut<R, F>(f: F) -> R
+    where
+        F: FnOnce(&mut SpiClient<'_>) -> R, /* TODO: redesign this with 2 lifetimes:
+                                            - 'conn ~= CurrentMemoryContext after connection
+                                            - 'ret ~= SPI_palloc's context
+                                            */
     {
         // connect to SPI
         //
@@ -379,14 +419,13 @@ impl Spi {
         // otherwise this function would need to return a `Result<R, spi::Error>` and that's a
         // fucking nightmare for users to deal with.  There's ample discussion around coming to
         // this decision at https://github.com/pgcentralfoundation/pgrx/pull/977
-        let connection =
-            SpiConnection::connect().expect("SPI_connect indicated an unexpected failure");
+        let mut client = SpiClient::connect().expect("SPI_connect indicated an unexpected failure");
 
         // run the provided closure within the memory context that SPI_connect()
         // just put us un.  We'll disconnect from SPI when the closure is finished.
         // If there's a panic or elog(ERROR), we don't care about also disconnecting from
         // SPI b/c Postgres will do that for us automatically
-        f(connection.client())
+        f(&mut client)
     }
 
     #[track_caller]

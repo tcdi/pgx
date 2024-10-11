@@ -5,4 +5,4 @@ error: lifetime may not live long enough
   |                                    -- ^^^^^^^^^^^^^^^^^ returning this value requires that `'1` must outlive `'2`
   |                                    ||
   |                                    |return type of closure is std::result::Result<pgrx::spi::PreparedStatement<'2>, pgrx::spi::SpiError>
-  |                                    has type `SpiClient<'1>`
+  |                                    has type `&SpiClient<'1>`
