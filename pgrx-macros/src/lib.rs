@@ -186,21 +186,18 @@ pub fn pg_cast(attr: TokenStream, item: TokenStream) -> TokenStream {
             Ok(paths) => {
                 let mut new_paths = Punctuated::<syn::Path, syn::Token![,]>::new();
                 for path in paths {
-                    if path.is_ident("implicit") {
-                        if let Some(cast) = &cast {
-                            panic!("The cast type has already been set to `{cast:?}`");
+                    match (PgCast::try_from(path), &cast) {
+                        (Ok(style), None) => cast = Some(style),
+                        (Ok(_), Some(cast)) => {
+                            panic!("The cast type has already been set to `{cast:?}`")
                         }
-                        cast = Some(PgCast::Implicit);
-                    } else if path.is_ident("assignment") {
-                        if let Some(cast) = &cast {
-                            panic!("The cast type has already been set to `{cast:?}`");
-                        }
-                        cast = Some(PgCast::Assignment);
-                    } else {
+
                         // ... and anything it doesn't understand is blindly passed through to the
                         // underlying `#[pg_extern]` function that gets created, which will ultimately
                         // decide what's naughty and what's nice
-                        new_paths.push(path);
+                        (Err(unknown), _) => {
+                            new_paths.push(unknown);
+                        }
                     }
                 }
 
