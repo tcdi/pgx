@@ -51,6 +51,50 @@ mod tests {
     }
 
     #[pg_test]
+    fn test_leak_and_drop_with_panic() {
+        let result = std::panic::catch_unwind(|| unsafe {
+            struct Thing;
+            impl Drop for Thing {
+                fn drop(&mut self) {
+                    panic!("please don't crash")
+                }
+            }
+
+            PgMemoryContexts::Transient {
+                parent: PgMemoryContexts::CurrentMemoryContext.value(),
+                name: "test",
+                min_context_size: 4096,
+                initial_block_size: 4096,
+                max_block_size: 4096,
+            }
+            .switch_to(|context| {
+                context.leak_and_drop_on_delete(Thing);
+            });
+        });
+
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        let caught = err.downcast_ref::<pg_sys::panic::CaughtError>();
+
+        match caught {
+            // would indicate some kind of terribleness with pgrx panic handling
+            None => panic!("caught a panic that isn't a `pg_sys::panic::CaughtError`"),
+
+            // this is the type of error we expect.  It comes to us here as the PostgresError
+            // variant because, while it was a Rust panic, it was from a function with #[pg_guard]
+            // directly called from Postgres
+            Some(&pg_sys::panic::CaughtError::PostgresError(ref report))
+                if report.message() == "please don't crash" =>
+            {
+                // ok!
+            }
+
+            // got some other kind of CaughtError variant we shouldn't have
+            _ => panic!("did not catch the correct error/panic type: {caught:?}"),
+        }
+    }
+
+    #[pg_test]
     fn parent() {
         unsafe {
             // SAFETY:  We know these two PgMemoryContext variants are valid b/c pgrx sets them up for us

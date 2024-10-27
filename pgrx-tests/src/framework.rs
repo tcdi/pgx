@@ -646,7 +646,11 @@ fn monitor_pg(mut command: Command, cmd_string: String, loglines: LogLines) -> S
 
             if line.contains("database system is ready to accept connections") {
                 // Postgres says it's ready to go
-                sender.send(session_id.clone()).unwrap();
+                if let Err(_) = sender.send(session_id.clone()) {
+                    // The channel is closed.  This is really early in the startup process
+                    // and likely indicates that a test crashed Postgres
+                    panic!("{}: `monitor_pg()`:  failed to send back session_id `{session_id}`.  Did Postgres crash?", "ERROR".red().bold());
+                }
                 is_started_yet = true;
             }
 

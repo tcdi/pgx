@@ -555,6 +555,8 @@ impl PgMemoryContexts {
     /// this MemoryContext, the original instance of `T` will be resurrected and its `impl Drop`
     /// will be called.
     pub fn leak_and_drop_on_delete<T>(&mut self, v: T) -> *mut T {
+        use crate as pgrx;
+        #[pgrx::pg_guard]
         unsafe extern "C" fn drop_on_delete<T>(ptr: void_mut_ptr) {
             let boxed = Box::from_raw(ptr as *mut T);
             drop(boxed);
