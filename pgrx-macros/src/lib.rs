@@ -178,7 +178,7 @@ pub fn pg_cast(attr: TokenStream, item: TokenStream) -> TokenStream {
         use syn::parse::Parser;
         use syn::punctuated::Punctuated;
 
-        let mut cast = PgCast::Default;
+        let mut cast = None;
         let mut pg_extern_attrs = proc_macro2::TokenStream::new();
 
         // look for the attributes `#[pg_cast]` directly understands
@@ -187,9 +187,15 @@ pub fn pg_cast(attr: TokenStream, item: TokenStream) -> TokenStream {
                 let mut new_paths = Punctuated::<syn::Path, syn::Token![,]>::new();
                 for path in paths {
                     if path.is_ident("implicit") {
-                        cast = PgCast::Implicit
+                        if let Some(cast) = &cast {
+                            panic!("The cast type has already been set to `{cast:?}`");
+                        }
+                        cast = Some(PgCast::Implicit);
                     } else if path.is_ident("assignment") {
-                        cast = PgCast::Assignment
+                        if let Some(cast) = &cast {
+                            panic!("The cast type has already been set to `{cast:?}`");
+                        }
+                        cast = Some(PgCast::Assignment);
                     } else {
                         // ... and anything it doesn't understand is blindly passed through to the
                         // underlying `#[pg_extern]` function that gets created, which will ultimately
@@ -206,7 +212,7 @@ pub fn pg_cast(attr: TokenStream, item: TokenStream) -> TokenStream {
         }
 
         let pg_extern = PgExtern::new(pg_extern_attrs.into(), item.clone().into())?.0;
-        Ok(CodeEnrichment(pg_extern.as_cast(cast)).to_token_stream().into())
+        Ok(CodeEnrichment(pg_extern.as_cast(cast.unwrap_or_default())).to_token_stream().into())
     }
 
     wrapped(attr, item).unwrap_or_else(|e: syn::Error| e.into_compile_error().into())

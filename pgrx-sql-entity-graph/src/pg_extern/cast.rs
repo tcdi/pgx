@@ -21,8 +21,9 @@ use quote::{quote, ToTokens, TokenStreamExt};
 /// A parsed `#[pg_cast]` operator.
 ///
 /// It is created during [`PgExtern`](crate::PgExtern) parsing.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub enum PgCast {
+    #[default]
     Default,
     Assignment,
     Implicit,
