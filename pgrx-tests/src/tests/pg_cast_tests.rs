@@ -11,7 +11,8 @@ use pgrx::prelude::*;
 
 #[pg_schema]
 mod pg_catalog {
-    use pgrx::pg_cast;
+    use pgrx::prelude::*;
+    use serde::{Deserialize, Serialize};
     use serde_json::Value::Number;
 
     #[pg_cast(implicit)]
@@ -26,6 +27,15 @@ mod pg_catalog {
             }
         };
         panic!("Error casting json value {} to an integer", value.0)
+    }
+
+    #[derive(PostgresType, Serialize, Deserialize)]
+    struct TestCastType;
+
+    #[pg_cast(implicit, immutable)]
+    fn testcasttype_to_bool(_i: TestCastType) -> bool {
+        // look, it's just a test, okay?
+        true
     }
 }
 
@@ -59,5 +69,21 @@ mod tests {
     #[pg_test]
     fn test_pg_cast_implicit_type_cast() {
         assert_eq!(Spi::get_one::<i32>("SELECT 1 + ('{\"a\": 1}'::json->'a')"), Ok(Some(2)));
+    }
+
+    #[pg_test]
+    fn assert_cast_func_is_immutable() {
+        let is_immutable = Spi::get_one::<bool>(
+            "SELECT provolatile = 'i' FROM pg_proc WHERE proname = 'testcasttype_to_bool';",
+        );
+        assert_eq!(is_immutable, Ok(Some(true)));
+    }
+
+    #[pg_test]
+    fn assert_cast_is_implicit() {
+        let is_immutable = Spi::get_one::<bool>(
+            "SELECT castcontext = 'i' FROM pg_cast WHERE castsource = 'TestCastType'::regtype AND casttarget = 'bool'::regtype;",
+        );
+        assert_eq!(is_immutable, Ok(Some(true)));
     }
 }
