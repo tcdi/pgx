@@ -323,6 +323,10 @@ impl PgConfig {
         Ok(self.run("--bindir")?.into())
     }
 
+    pub fn lib_dir(&self) -> eyre::Result<PathBuf> {
+        Ok(self.run("--libdir")?.into())
+    }
+
     pub fn postmaster_path(&self) -> eyre::Result<PathBuf> {
         let mut path = self.bin_dir()?;
         path.push("postgres");

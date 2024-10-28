@@ -343,6 +343,12 @@ fn generate_bindings(
             )
         })?;
     }
+
+    let lib_dir = pg_config.lib_dir()?;
+    println!(
+        "cargo:rustc-link-search={}",
+        lib_dir.to_str().ok_or(eyre!("{lib_dir:?} is not valid UTF-8 string"))?
+    );
     Ok(())
 }
 
