@@ -5,7 +5,7 @@ use std::error::Error;
 fn issue1209_prepared_stmt(q: &str) -> Result<Option<String>, Box<dyn Error>> {
     use pgrx::spi::Query;
 
-    let prepared = { Spi::connect(|c| c.prepare(q, None))? };
+    let prepared = { Spi::connect(|c| c.prepare(q, &[]))? };
 
     Ok(Spi::connect(|c| prepared.execute(&c, Some(1), &[])?.first().get(1))?)
 }

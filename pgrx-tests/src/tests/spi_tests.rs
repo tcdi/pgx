@@ -216,7 +216,7 @@ mod tests {
                 None,
                 &[],
             )?;
-            let prepared = client.prepare("SELECT * FROM tests.cursor_table", None)?;
+            let prepared = client.prepare("SELECT * FROM tests.cursor_table", &[])?;
             let mut portal = client.open_cursor(&prepared, &[]);
 
             assert_eq!(sum_all(portal.fetch(3)?), 1 + 2 + 3);
@@ -255,7 +255,7 @@ mod tests {
             )?;
             let prepared = client.prepare(
                 "SELECT * FROM tests.cursor_table WHERE id = $1",
-                Some([PgBuiltInOids::INT4OID.oid()].to_vec()),
+                &[PgBuiltInOids::INT4OID.oid()],
             )?;
             client.open_cursor(&prepared, args);
             unreachable!();
@@ -377,7 +377,7 @@ mod tests {
     fn test_prepared_statement() -> Result<(), spi::Error> {
         let rc = Spi::connect(|client| {
             let prepared =
-                client.prepare("SELECT $1", Some(vec![PgOid::BuiltIn(PgBuiltInOids::INT4OID)]))?;
+                client.prepare("SELECT $1", &[PgOid::BuiltIn(PgBuiltInOids::INT4OID)])?;
             client.select(&prepared, None, &[42.into()])?.first().get::<i32>(1)
         })?;
 
@@ -389,7 +389,7 @@ mod tests {
     fn test_prepared_statement_argument_mismatch() {
         let err = Spi::connect(|client| {
             let prepared =
-                client.prepare("SELECT $1", Some(vec![PgOid::BuiltIn(PgBuiltInOids::INT4OID)]))?;
+                client.prepare("SELECT $1", &[PgOid::BuiltIn(PgBuiltInOids::INT4OID)])?;
             client.select(&prepared, None, &[]).map(|_| ())
         })
         .unwrap_err();
@@ -404,9 +404,7 @@ mod tests {
     fn test_owned_prepared_statement() -> Result<(), spi::Error> {
         let prepared = Spi::connect(|client| {
             Ok::<_, spi::Error>(
-                client
-                    .prepare("SELECT $1", Some(vec![PgOid::BuiltIn(PgBuiltInOids::INT4OID)]))?
-                    .keep(),
+                client.prepare("SELECT $1", &[PgOid::BuiltIn(PgBuiltInOids::INT4OID)])?.keep(),
             )
         })?;
         let rc = Spi::connect(|client| {
@@ -442,7 +440,7 @@ mod tests {
     #[pg_test(error = "CREATE TABLE is not allowed in a non-volatile function")]
     fn test_execute_prepared_statement_in_readonly() -> Result<(), spi::Error> {
         Spi::connect(|client| {
-            let stmt = client.prepare("CREATE TABLE a ()", None)?;
+            let stmt = client.prepare("CREATE TABLE a ()", &[])?;
             // This is supposed to run in read-only
             stmt.execute(&client, Some(1), &[])?;
             Ok(())
@@ -452,7 +450,7 @@ mod tests {
     #[pg_test]
     fn test_execute_prepared_statement_in_readwrite() -> Result<(), spi::Error> {
         Spi::connect(|client| {
-            let stmt = client.prepare_mut("CREATE TABLE a ()", None)?;
+            let stmt = client.prepare_mut("CREATE TABLE a ()", &[])?;
             // This is supposed to run in read-write
             stmt.execute(&client, Some(1), &[])?;
             Ok(())

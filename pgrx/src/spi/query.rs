@@ -53,14 +53,14 @@ pub trait PreparableQuery<'conn>: Query<'conn> {
     fn prepare(
         self,
         client: &SpiClient<'conn>,
-        args: Option<Vec<PgOid>>,
+        args: &[PgOid],
     ) -> SpiResult<PreparedStatement<'conn>>;
 
     /// Prepares a query allowed to change data
     fn prepare_mut(
         self,
         client: &SpiClient<'conn>,
-        args: Option<Vec<PgOid>>,
+        args: &[PgOid],
     ) -> SpiResult<PreparedStatement<'conn>>;
 }
 
@@ -152,17 +152,15 @@ fn prepare_datum<'mcx>(datum: &DatumWithOid<'mcx>) -> (pg_sys::Datum, std::os::r
 
 fn prepare<'conn>(
     cmd: &CStr,
-    args: Option<Vec<PgOid>>,
+    args: &[PgOid],
     mutating: bool,
 ) -> SpiResult<PreparedStatement<'conn>> {
-    let args = args.unwrap_or_default();
-
     // SAFETY: all arguments are prepared above
     let plan = unsafe {
         pg_sys::SPI_prepare(
             cmd.as_ptr(),
             args.len() as i32,
-            args.into_iter().map(PgOid::value).collect::<Vec<_>>().as_mut_ptr(),
+            args.into_iter().map(|arg| arg.value()).collect::<Vec<_>>().as_mut_ptr(),
         )
     };
     Ok(PreparedStatement {
@@ -206,7 +204,7 @@ macro_rules! impl_prepared_query {
             fn prepare(
                 self,
                 _client: &SpiClient<'conn>,
-                args: Option<Vec<PgOid>>,
+                args: &[PgOid],
             ) -> SpiResult<PreparedStatement<'conn>> {
                 prepare($s(self).as_ref(), args, false)
             }
@@ -214,7 +212,7 @@ macro_rules! impl_prepared_query {
             fn prepare_mut(
                 self,
                 _client: &SpiClient<'conn>,
-                args: Option<Vec<PgOid>>,
+                args: &[PgOid],
             ) -> SpiResult<PreparedStatement<'conn>> {
                 prepare($s(self).as_ref(), args, true)
             }

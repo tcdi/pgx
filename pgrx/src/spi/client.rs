@@ -17,7 +17,7 @@ impl<'conn> SpiClient<'conn> {
     pub fn prepare<Q: PreparableQuery<'conn>>(
         &self,
         query: Q,
-        args: Option<Vec<PgOid>>,
+        args: &[PgOid],
     ) -> SpiResult<PreparedStatement<'conn>> {
         query.prepare(self, args)
     }
@@ -26,7 +26,7 @@ impl<'conn> SpiClient<'conn> {
     pub fn prepare_mut<Q: PreparableQuery<'conn>>(
         &self,
         query: Q,
-        args: Option<Vec<PgOid>>,
+        args: &[PgOid],
     ) -> SpiResult<PreparedStatement<'conn>> {
         query.prepare_mut(self, args)
     }
