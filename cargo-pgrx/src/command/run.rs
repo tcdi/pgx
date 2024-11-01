@@ -18,7 +18,6 @@ use eyre::eyre;
 use owo_colors::OwoColorize;
 use pgrx_pg_config::{createdb, PgConfig, Pgrx};
 use std::path::Path;
-use std::process::Command;
 
 /// Compile/install extension to a pgrx-managed Postgres instance and start psql
 #[derive(clap::Args, Debug)]
@@ -135,6 +134,7 @@ pub(crate) fn run(
 #[cfg(unix)]
 pub(crate) fn exec_psql(pg_config: &PgConfig, dbname: &str, pgcli: bool) -> eyre::Result<()> {
     use std::os::unix::process::CommandExt;
+    use std::process::Command;
     let mut command = Command::new(match pgcli {
         false => pg_config.psql_path()?.into_os_string(),
         true => "pgcli".to_string().into(),
@@ -156,5 +156,28 @@ pub(crate) fn exec_psql(pg_config: &PgConfig, dbname: &str, pgcli: bool) -> eyre
 
 #[cfg(not(unix))]
 pub(crate) fn exec_psql(pg_config: &PgConfig, dbname: &str, pgcli: bool) -> eyre::Result<()> {
-    panic!("Tried to exec on a platform that doesn't support exec!")
+    use std::process::Command;
+    use std::process::Stdio;
+    let mut command = Command::new(match pgcli {
+        false => pg_config.psql_path()?.into_os_string(),
+        true => "pgcli".to_string().into(),
+    });
+    command
+        .stdin(Stdio::inherit())
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .env_remove("PGDATABASE")
+        .env_remove("PGHOST")
+        .env_remove("PGPORT")
+        .env_remove("PGUSER")
+        .arg("-h")
+        .arg(pg_config.host())
+        .arg("-p")
+        .arg(pg_config.port()?.to_string())
+        .arg(dbname);
+    let command_str = format!("{command:?}");
+    tracing::debug!(command = %command_str, "Running");
+    let output = command.output()?;
+    tracing::trace!(status_code = %output.status, command = %command_str, "Finished");
+    Ok(())
 }

@@ -91,7 +91,8 @@ pub(crate) fn start_postgres(pg_config: &PgConfig) -> eyre::Result<()> {
         pg_config.major_version()?,
         port.to_string().bold().cyan()
     );
-    let mut command = std::process::Command::new(format!("{}/pg_ctl", bindir.display()));
+    let pg_ctl = pg_config.pg_ctl_path()?;
+    let mut command = std::process::Command::new(pg_ctl);
     command
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -101,10 +102,16 @@ pub(crate) fn start_postgres(pg_config: &PgConfig) -> eyre::Result<()> {
         .arg(&datadir)
         .arg("-l")
         .arg(&logfile);
+    #[cfg(target_os = "windows")]
+    {
+        // on windows, created pipes are leaked, so that the command hangs
+        command.stdout(Stdio::inherit()).stderr(Stdio::inherit());
+    }
 
     let command_str = format!("{command:?}");
+    tracing::debug!(command = %command_str, "Running");
     let output = command.output()?;
-
+    tracing::trace!(status_code = %output.status, command = %command_str, "Finished");
     if !output.status.success() {
         return Err(eyre!(
             "problem running pg_ctl: {}\n\n{}",

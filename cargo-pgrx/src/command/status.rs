@@ -64,8 +64,7 @@ pub(crate) fn status_postgres(pg_config: &PgConfig) -> eyre::Result<bool> {
         return Ok(false);
     } // if Err, let the filesystem and OS handle our impending failure
 
-    let mut pg_ctl = pg_config.bin_dir()?;
-    pg_ctl.push("pg_ctl");
+    let pg_ctl = pg_config.pg_ctl_path()?;
     let mut command = process::Command::new(pg_ctl);
     command.stdout(Stdio::piped()).stderr(Stdio::piped()).arg("status").arg("-D").arg(&datadir);
     let command_str = format!("{command:?}");

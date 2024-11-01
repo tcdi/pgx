@@ -9,7 +9,7 @@
 //LICENSE Use of this source code is governed by the MIT license that can be found in the LICENSE file.
 use std::panic::{self, AssertUnwindSafe, Location};
 use std::sync::{Mutex, PoisonError};
-use std::{any, io, mem, process};
+use std::{any, mem, process};
 
 /// Register a shutdown hook to be called when the process exits.
 ///
@@ -114,12 +114,6 @@ fn failure_message(e: &(dyn any::Any + Send)) -> &str {
 
 /// Write to stderr, bypassing libtest's output redirection. Doesn't append `\n`.
 fn write_stderr(s: &str) {
-    loop {
-        let res = unsafe { libc::write(libc::STDERR_FILENO, s.as_ptr().cast(), s.len()) };
-        // Handle EINTR to ensure we don't drop messages.
-        // `Error::last_os_error()` just reads from errno, so it's fine to use here.
-        if res >= 0 || io::Error::last_os_error().kind() != io::ErrorKind::Interrupted {
-            break;
-        }
-    }
+    use std::io::Write;
+    let _ = std::io::stderr().lock().write_all(s.as_bytes());
 }

@@ -126,6 +126,11 @@ pub fn test_extension(
     runas: Option<String>,
     pgdata: Option<PathBuf>,
 ) -> eyre::Result<()> {
+    #[cfg(target_os = "windows")]
+    if runas.is_some() {
+        eyre::bail!("`--runas` is not supported on Windows");
+    }
+
     if let Some(ref testname) = testname {
         tracing::Span::current().record("testname", tracing::field::display(&testname.as_ref()));
     }

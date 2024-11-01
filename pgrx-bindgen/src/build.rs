@@ -794,13 +794,12 @@ fn run_bindgen(
     let configure = pg_config.configure()?;
     let preferred_clang: Option<&std::path::Path> = configure.get("CLANG").map(|s| s.as_ref());
     eprintln!("pg_config --configure CLANG = {preferred_clang:?}");
+    let pg_target_includes = pg_target_includes(major_version, pg_config)?;
+    eprintln!("pg_target_includes = {pg_target_includes:?}");
     let (autodetect, includes) = clang::detect_include_paths_for(preferred_clang);
     let mut binder = bindgen::Builder::default();
     binder = add_blocklists(binder);
-    binder = binder
-        .allowlist_file(format!("{}.*", pg_target_include(major_version, pg_config)?))
-        .allowlist_item("PGERROR")
-        .allowlist_item("SIG.*");
+    binder = add_allowlists(binder, pg_target_includes.iter().map(|x| x.as_str()));
     binder = add_derives(binder);
     if !autodetect {
         let builtin_includes = includes.iter().filter_map(|p| Some(format!("-I{}", p.to_str()?)));
@@ -812,7 +811,7 @@ fn run_bindgen(
     let bindings = binder
         .header(include_h.display().to_string())
         .clang_args(extra_bindgen_clang_args(pg_config)?)
-        .clang_arg(format!("-I{}", pg_target_include(major_version, pg_config)?))
+        .clang_args(pg_target_includes.iter().map(|x| format!("-I{x}")))
         .detect_include_paths(autodetect)
         .parse_callbacks(Box::new(overrides))
         .default_enum_style(bindgen::EnumVariation::ModuleConsts)
@@ -900,6 +899,16 @@ fn add_blocklists(bind: bindgen::Builder) -> bindgen::Builder {
         .blocklist_item("ERROR")
 }
 
+fn add_allowlists<'a>(
+    mut bind: bindgen::Builder,
+    pg_target_includes: impl Iterator<Item = &'a str>,
+) -> bindgen::Builder {
+    for pg_target_include in pg_target_includes {
+        bind = bind.allowlist_file(format!("{}.*", regex::escape(pg_target_include)))
+    }
+    bind.allowlist_item("PGERROR").allowlist_item("SIG.*")
+}
+
 fn add_derives(bind: bindgen::Builder) -> bindgen::Builder {
     bind.derive_debug(true)
         .derive_copy(true)
@@ -947,23 +956,44 @@ fn target_env_tracked(s: &str) -> Option<String> {
     env_tracked(&format!("{s}_{target}")).or_else(|| env_tracked(s))
 }
 
-fn pg_target_include(pg_version: u16, pg_config: &PgConfig) -> eyre::Result<String> {
-    let var = "PGRX_INCLUDEDIR_SERVER";
+fn find_include(
+    pg_version: u16,
+    var: &str,
+    default: impl Fn() -> eyre::Result<PathBuf>,
+) -> eyre::Result<String> {
     let value =
         target_env_tracked(&format!("{var}_PG{pg_version}")).or_else(|| target_env_tracked(var));
     let path = match value {
         // No configured value: ask `pg_config`.
-        None => pg_config.includedir_server()?,
+        None => default()?,
         // Configured to non-empty string: pass to bindgen
         Some(overridden) => Path::new(&overridden).to_path_buf(),
     };
     let path = std::fs::canonicalize(&path)
         .wrap_err(format!("cannot find {path:?} for C header files"))?
         .join("") // returning a `/`-ending path
-        .to_str()
-        .ok_or(eyre!("{path:?} is not valid UTF-8 string"))?
+        .display()
         .to_string();
-    Ok(path)
+    if let Some(path) = path.strip_prefix("\\\\?\\") {
+        Ok(path.to_string())
+    } else {
+        Ok(path)
+    }
+}
+
+fn pg_target_includes(pg_version: u16, pg_config: &PgConfig) -> eyre::Result<Vec<String>> {
+    let mut result =
+        vec![find_include(pg_version, "PGRX_INCLUDEDIR_SERVER", || pg_config.includedir_server())?];
+    if let Some("msvc") = env_tracked("CARGO_CFG_TARGET_ENV").as_deref() {
+        result.push(find_include(pg_version, "PGRX_PKGINCLUDEDIR", || pg_config.pkgincludedir())?);
+        result.push(find_include(pg_version, "PGRX_INCLUDEDIR_SERVER_PORT_WIN32", || {
+            pg_config.includedir_server_port_win32()
+        })?);
+        result.push(find_include(pg_version, "PGRX_INCLUDEDIR_SERVER_PORT_WIN32_MSVC", || {
+            pg_config.includedir_server_port_win32_msvc()
+        })?);
+    }
+    Ok(result)
 }
 
 fn build_shim(
@@ -976,7 +1006,15 @@ fn build_shim(
     std::fs::copy(shim_src, shim_dst).unwrap();
 
     let mut build = cc::Build::new();
-    build.flag(&format!("-I{}", pg_target_include(major_version, pg_config)?));
+    if let Some("msvc") = env_tracked("CARGO_CFG_TARGET_ENV").as_deref() {
+        // without this, pgrx_embed would be linked to postgres.lib
+        build.compiler("clang");
+        build.archiver("llvm-lib");
+        build.flag("-flto=thin");
+    }
+    for pg_target_include in pg_target_includes(major_version, pg_config)?.iter() {
+        build.flag(&format!("-I{pg_target_include}"));
+    }
     for flag in extra_bindgen_clang_args(pg_config)? {
         build.flag(&flag);
     }

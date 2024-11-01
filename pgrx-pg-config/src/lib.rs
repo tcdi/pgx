@@ -29,11 +29,7 @@ pub static BASE_POSTGRES_TESTING_PORT_NO: u16 = 32200;
 /// The flags to specify to get a "C.UTF-8" locale on this system, or "C" locale on systems without
 /// a "C.UTF-8" locale equivalent.
 pub fn get_c_locale_flags() -> &'static [&'static str] {
-    #[cfg(target_os = "macos")]
-    {
-        &["--locale=C", "--lc-ctype=UTF-8"]
-    }
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(all(target_family = "unix", not(target_os = "macos")))]
     {
         match Command::new("locale").arg("-a").output() {
             Ok(cmd)
@@ -46,6 +42,14 @@ pub fn get_c_locale_flags() -> &'static [&'static str] {
             // fallback to C if we can't list locales or don't have C.UTF-8
             _ => &["--locale=C"],
         }
+    }
+    #[cfg(target_os = "macos")]
+    {
+        &["--locale=C", "--lc-ctype=UTF-8"]
+    }
+    #[cfg(target_os = "windows")]
+    {
+        &["--locale=C"]
     }
 }
 
@@ -330,32 +334,55 @@ impl PgConfig {
 
     pub fn postmaster_path(&self) -> eyre::Result<PathBuf> {
         let mut path = self.bin_dir()?;
+        #[cfg(not(target_os = "windows"))]
         path.push("postgres");
-
+        #[cfg(target_os = "windows")]
+        path.push("postgres.exe");
         Ok(path)
     }
 
     pub fn initdb_path(&self) -> eyre::Result<PathBuf> {
         let mut path = self.bin_dir()?;
+        #[cfg(not(target_os = "windows"))]
         path.push("initdb");
+        #[cfg(target_os = "windows")]
+        path.push("initdb.exe");
         Ok(path)
     }
 
     pub fn createdb_path(&self) -> eyre::Result<PathBuf> {
         let mut path = self.bin_dir()?;
+        #[cfg(not(target_os = "windows"))]
         path.push("createdb");
+        #[cfg(target_os = "windows")]
+        path.push("createdb.exe");
         Ok(path)
     }
 
     pub fn dropdb_path(&self) -> eyre::Result<PathBuf> {
         let mut path = self.bin_dir()?;
+        #[cfg(not(target_os = "windows"))]
         path.push("dropdb");
+        #[cfg(target_os = "windows")]
+        path.push("dropdb.exe");
+        Ok(path)
+    }
+
+    pub fn pg_ctl_path(&self) -> eyre::Result<PathBuf> {
+        let mut path = self.bin_dir()?;
+        #[cfg(not(target_os = "windows"))]
+        path.push("pg_ctl");
+        #[cfg(target_os = "windows")]
+        path.push("pg_ctl.exe");
         Ok(path)
     }
 
     pub fn psql_path(&self) -> eyre::Result<PathBuf> {
         let mut path = self.bin_dir()?;
+        #[cfg(not(target_os = "windows"))]
         path.push("psql");
+        #[cfg(target_os = "windows")]
+        path.push("psql.exe");
         Ok(path)
     }
 
@@ -385,8 +412,22 @@ impl PgConfig {
             .collect())
     }
 
+    pub fn pkgincludedir(&self) -> eyre::Result<PathBuf> {
+        Ok(self.run("--pkgincludedir")?.into())
+    }
+
     pub fn includedir_server(&self) -> eyre::Result<PathBuf> {
         Ok(self.run("--includedir-server")?.into())
+    }
+
+    pub fn includedir_server_port_win32(&self) -> eyre::Result<PathBuf> {
+        let includedir_server = self.includedir_server()?;
+        Ok(includedir_server.join("port").join("win32"))
+    }
+
+    pub fn includedir_server_port_win32_msvc(&self) -> eyre::Result<PathBuf> {
+        let includedir_server = self.includedir_server()?;
+        Ok(includedir_server.join("port").join("win32_msvc"))
     }
 
     pub fn pkglibdir(&self) -> eyre::Result<PathBuf> {
