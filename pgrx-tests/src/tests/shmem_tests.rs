@@ -11,8 +11,8 @@ use pgrx::prelude::*;
 use pgrx::{pg_shmem_init, PgAtomic, PgLwLock, PgSharedMemoryInitialization};
 use std::sync::atomic::AtomicBool;
 
-static ATOMIC: PgAtomic<AtomicBool> = PgAtomic::new();
-static LWLOCK: PgLwLock<bool> = PgLwLock::new();
+static ATOMIC: PgAtomic<AtomicBool> = PgAtomic::new(c"pgrx_tests_atomic");
+static LWLOCK: PgLwLock<bool> = PgLwLock::new(c"pgrx_tests_lwlock");
 
 #[pg_guard]
 pub extern "C" fn _PG_init() {

@@ -10,8 +10,8 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 use crate::lwlock::*;
 use crate::{pg_sys, PgAtomic};
+use std::cell::UnsafeCell;
 use std::hash::Hash;
-use uuid::Uuid;
 
 /// Custom types that want to participate in shared memory must implement this marker trait
 pub unsafe trait PGRXSharedMemory {}
@@ -38,10 +38,10 @@ pub unsafe trait PGRXSharedMemory {}
 /// use pgrx::{PgAtomic, PgLwLock, pg_shmem_init, PgSharedMemoryInitialization};
 ///
 /// // primitive types must be protected behind a `PgLwLock`
-/// static PRIMITIVE: PgLwLock<i32> = PgLwLock::new();
+/// static PRIMITIVE: PgLwLock<i32> = PgLwLock::new(c"primitive");
 ///
 /// // Rust atomics can be used without locks, wrapped in a `PgAtomic`
-/// static ATOMIC: PgAtomic<std::sync::atomic::AtomicBool> = PgAtomic::new();
+/// static ATOMIC: PgAtomic<std::sync::atomic::AtomicBool> = PgAtomic::new(c"atomic");
 ///
 /// #[pg_guard]
 /// pub extern "C" fn _PG_init() {
@@ -162,9 +162,8 @@ impl PgSharedMem {
     /// Must be run from PG_init, use for types which are guarded by a LWLock
     pub fn pg_init_locked<T: Default + PGRXSharedMemory>(lock: &PgLwLock<T>) {
         unsafe {
-            let lock = alloc::ffi::CString::new(lock.get_name()).expect("CString::new failed");
-            pg_sys::RequestAddinShmemSpace(std::mem::size_of::<T>());
-            pg_sys::RequestNamedLWLockTranche(lock.as_ptr(), 1);
+            pg_sys::RequestAddinShmemSpace(std::mem::size_of::<PgLwLockShared<T>>());
+            pg_sys::RequestNamedLWLockTranche(lock.name().as_ptr(), 1);
         }
     }
 
@@ -178,18 +177,24 @@ impl PgSharedMem {
     /// Must be run from the shared memory init hook, use for types which are guarded by a `LWLock`
     /// SAFETY: Must only be called from inside the Postgres shared memory init hook
     pub unsafe fn shmem_init_locked<T: Default + PGRXSharedMemory>(lock: &PgLwLock<T>) {
-        let mut found = false;
         unsafe {
-            let shm_name = alloc::ffi::CString::new(lock.get_name()).expect("CString::new failed");
-            let addin_shmem_init_lock: *mut pg_sys::LWLock =
-                &mut (*pg_sys::MainLWLockArray.add(21)).lock;
+            let shm_name = lock.name();
+            let addin_shmem_init_lock = &raw mut (*pg_sys::MainLWLockArray.add(21)).lock;
             pg_sys::LWLockAcquire(addin_shmem_init_lock, pg_sys::LWLockMode::LW_EXCLUSIVE);
 
-            let fv_shmem =
-                pg_sys::ShmemInitStruct(shm_name.into_raw(), std::mem::size_of::<T>(), &mut found)
-                    as *mut T;
-
-            std::ptr::write(fv_shmem, <T>::default());
+            let mut found = false;
+            let fv_shmem = pg_sys::ShmemInitStruct(
+                shm_name.as_ptr(),
+                std::mem::size_of::<PgLwLockShared<T>>(),
+                &mut found,
+            )
+            .cast::<PgLwLockShared<T>>();
+            if !found {
+                fv_shmem.write(PgLwLockShared {
+                    data: UnsafeCell::new(T::default()),
+                    lock_ptr: &raw mut (*pg_sys::GetNamedLWLockTranche(shm_name.as_ptr())).lock,
+                });
+            }
 
             lock.attach(fv_shmem);
             pg_sys::LWLockRelease(addin_shmem_init_lock);
@@ -200,21 +205,19 @@ impl PgSharedMem {
     /// SAFETY: Must only be called from inside the Postgres shared memory init hook
     pub unsafe fn shmem_init_atomic<T: atomic_traits::Atomic + Default>(atomic: &PgAtomic<T>) {
         unsafe {
-            let shm_name = alloc::ffi::CString::new(Uuid::new_v4().to_string())
-                .expect("CString::new() failed");
-
-            let addin_shmem_init_lock: *mut pg_sys::LWLock =
-                &mut (*pg_sys::MainLWLockArray.add(21)).lock;
+            let shm_name = atomic.name();
+            let addin_shmem_init_lock = &raw mut (*pg_sys::MainLWLockArray.add(21)).lock;
+            pg_sys::LWLockAcquire(addin_shmem_init_lock, pg_sys::LWLockMode::LW_EXCLUSIVE);
 
             let mut found = false;
-            pg_sys::LWLockAcquire(addin_shmem_init_lock, pg_sys::LWLockMode::LW_EXCLUSIVE);
             let fv_shmem =
-                pg_sys::ShmemInitStruct(shm_name.into_raw(), std::mem::size_of::<T>(), &mut found)
-                    as *mut T;
+                pg_sys::ShmemInitStruct(shm_name.as_ptr(), std::mem::size_of::<T>(), &mut found)
+                    .cast::<T>();
+            if !found {
+                fv_shmem.write(T::default());
+            }
 
             atomic.attach(fv_shmem);
-            let atomic = T::default();
-            std::ptr::copy(&atomic, fv_shmem, 1);
             pg_sys::LWLockRelease(addin_shmem_init_lock);
         }
     }

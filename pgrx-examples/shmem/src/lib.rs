@@ -29,12 +29,12 @@ pub struct Pgtest {
 
 unsafe impl PGRXSharedMemory for Pgtest {}
 
-static DEQUE: PgLwLock<heapless::Deque<Pgtest, 400>> = PgLwLock::new();
-static VEC: PgLwLock<heapless::Vec<Pgtest, 400>> = PgLwLock::new();
-static HASH: PgLwLock<heapless::FnvIndexMap<i32, i32, 4>> = PgLwLock::new();
-static STRUCT: PgLwLock<Pgtest> = PgLwLock::new();
-static PRIMITIVE: PgLwLock<i32> = PgLwLock::new();
-static ATOMIC: PgAtomic<std::sync::atomic::AtomicBool> = PgAtomic::new();
+static DEQUE: PgLwLock<heapless::Deque<Pgtest, 400>> = PgLwLock::new(c"shmem_deque");
+static VEC: PgLwLock<heapless::Vec<Pgtest, 400>> = PgLwLock::new(c"shmem_vec");
+static HASH: PgLwLock<heapless::FnvIndexMap<i32, i32, 4>> = PgLwLock::new(c"shmem_hash");
+static STRUCT: PgLwLock<Pgtest> = PgLwLock::new(c"shmem_struct");
+static PRIMITIVE: PgLwLock<i32> = PgLwLock::new(c"shmem_primtive");
+static ATOMIC: PgAtomic<std::sync::atomic::AtomicBool> = PgAtomic::new(c"shmem_atomic");
 
 #[pg_guard]
 pub extern "C" fn _PG_init() {

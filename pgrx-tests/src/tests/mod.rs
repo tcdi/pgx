@@ -58,7 +58,6 @@ mod rel_tests;
 mod result_tests;
 mod roundtrip_tests;
 mod schema_tests;
-#[cfg(target_family = "unix")]
 mod shmem_tests;
 mod spi_tests;
 mod srf_tests;

@@ -9,14 +9,20 @@
 //LICENSE Use of this source code is governed by the MIT license that can be found in the LICENSE file.
 #![deny(unsafe_op_in_unsafe_fn)]
 use std::cell::UnsafeCell;
+use std::ffi::CStr;
 
 pub struct PgAtomic<T> {
+    name: &'static CStr,
     inner: UnsafeCell<*mut T>,
 }
 
 impl<T> PgAtomic<T> {
-    pub const fn new() -> Self {
-        Self { inner: UnsafeCell::new(std::ptr::null_mut()) }
+    pub const fn new(name: &'static CStr) -> Self {
+        Self { name, inner: UnsafeCell::new(std::ptr::null_mut()) }
+    }
+
+    pub fn name(&self) -> &'static CStr {
+        self.name
     }
 }
 
@@ -32,7 +38,10 @@ where
     }
 
     pub fn get(&self) -> &T {
-        unsafe { (*self.inner.get()).as_ref().expect("PgAtomic was not initialized") }
+        unsafe {
+            let shared = self.inner.get().read().as_ref().expect("PgAtomic was not initialized");
+            shared
+        }
     }
 }
 
