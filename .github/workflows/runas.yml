@@ -93,4 +93,6 @@ jobs:
         run: cargo pgrx init --pg14=$(which pg_config)
 
       - name: Test cargo pgrx test --runas
-        run: cd pgrx-examples/arrays && cargo pgrx test pg14 --runas postgres --pgdata=/tmp/pgdata
+        run: |
+          echo 0 | sudo tee /proc/sys/fs/protected_fifos
+          cd pgrx-examples/arrays && cargo pgrx test pg14 --runas postgres --pgdata=/tmp/pgdata
