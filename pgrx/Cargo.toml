@@ -10,7 +10,7 @@
 
 [package]
 name = "pgrx"
-version = "0.12.7"
+version = "0.12.8"
 authors = ["PgCentral Foundation, Inc. <contact@pgcentral.org>"]
 license = "MIT"
 description = "pgrx:  A Rust framework for creating Postgres extensions"

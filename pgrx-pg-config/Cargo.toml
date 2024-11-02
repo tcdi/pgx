@@ -10,7 +10,7 @@
  
 [package]
 name = "pgrx-pg-config"
-version = "0.12.7"
+version = "0.12.8"
 authors = ["PgCentral Foundation, Inc. <contact@pgcentral.org>"]
 license = "MIT"
 description = "A Postgres pg_config wrapper for 'pgrx'"
