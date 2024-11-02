@@ -897,6 +897,8 @@ fn add_blocklists(bind: bindgen::Builder) -> bindgen::Builder {
         .blocklist_function("varsize_any")
         // it's defined twice on Windows, so use PGERROR instead
         .blocklist_item("ERROR")
+        // it causes strange linker errors for PostgreSQL 14 on Windows
+        .blocklist_function("IsQueryIdEnabled")
 }
 
 fn add_allowlists<'a>(
