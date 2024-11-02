@@ -494,7 +494,8 @@ static GIT_HASH: OnceLock<MemoizeKeyValue> = OnceLock::new();
 fn get_git_hash(manifest_path: impl AsRef<Path>) -> eyre::Result<String> {
     let path_string = manifest_path.as_ref().to_owned();
 
-    if let Some(hash) = GIT_HASH.get_or_init(Default::default).lock().unwrap().get(&path_string) {
+    let mut mutex = GIT_HASH.get_or_init(Default::default).lock().unwrap();
+    if let Some(hash) = mutex.get(&path_string) {
         Ok(hash.clone())
     } else {
         let hash = match get_property(manifest_path, "git_hash")? {
@@ -504,7 +505,7 @@ fn get_git_hash(manifest_path: impl AsRef<Path>) -> eyre::Result<String> {
             )),
         };
 
-        GIT_HASH.get_or_init(Default::default).lock().unwrap().insert(path_string, hash.clone());
+        mutex.insert(path_string, hash.clone());
 
         Ok(hash)
     }
