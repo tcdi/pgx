@@ -163,14 +163,16 @@ impl BackgroundWorker {
         unsafe {
             assert!(!pg_sys::MyBgworkerEntry.is_null(), "BackgroundWorker associated functions can only be called from a registered background worker");
         }
-        match timeout {
+        let wakeup_flags = match timeout {
             Some(t) => wait_latch(
                 t.as_millis().try_into().unwrap(),
                 WLflags::WL_LATCH_SET | WLflags::WL_TIMEOUT | WLflags::WL_POSTMASTER_DEATH,
             ),
             None => wait_latch(0, WLflags::WL_LATCH_SET | WLflags::WL_POSTMASTER_DEATH),
         };
-        !BackgroundWorker::sigterm_received()
+
+        let postmaster_died = (wakeup_flags & pg_sys::WL_POSTMASTER_DEATH as i32) != 0;
+        !BackgroundWorker::sigterm_received() && !postmaster_died
     }
 
     /// Is this `BackgroundWorker` allowed to continue?
