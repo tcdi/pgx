@@ -112,7 +112,7 @@ fn make_target_info(cmd: &PgrxTarget, tmp: &Path) -> Result<()> {
         .arg("--features")
         .arg(format!("pgrx-pg-sys/pg{major_version}"))
         .env("PGRX_PG_CONFIG_PATH", &pg_config_path)
-        .env("PGRX_PG_SYS_EXTRA_OUTPUT_PATH", &tmp.join(&filename)))?;
+        .env("PGRX_PG_SYS_EXTRA_OUTPUT_PATH", tmp.join(&filename)))?;
 
     run(Command::new("rustfmt").current_dir(tmp).arg(&filename))?;
     run(Command::new("tar").current_dir(tmp).arg("czf").arg("out.tgz").arg(&filename))?;

@@ -127,7 +127,7 @@ pub fn test_extension(
     pgdata: Option<PathBuf>,
 ) -> eyre::Result<()> {
     if let Some(ref testname) = testname {
-        tracing::Span::current().record("testname", &tracing::field::display(&testname.as_ref()));
+        tracing::Span::current().record("testname", tracing::field::display(&testname.as_ref()));
     }
     let target_dir = get_target_dir()?;
 

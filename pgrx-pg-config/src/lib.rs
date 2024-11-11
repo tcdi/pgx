@@ -747,7 +747,7 @@ fn does_db_exist(pg_config: &PgConfig, dbname: &str) -> eyre::Result<bool> {
         .arg(pg_config.port()?.to_string())
         .arg("template1")
         .arg("-c")
-        .arg(&format!(
+        .arg(format!(
             "select count(*) from pg_database where datname = '{}';",
             dbname.replace('\'', "''")
         ))

@@ -343,7 +343,7 @@ fn first_build(
 
     if !features_arg.trim().is_empty() {
         command.arg("--features");
-        command.arg(&features_arg);
+        command.arg(features_arg);
     }
 
     if features.no_default_features {
@@ -387,7 +387,7 @@ fn compute_codegen(
     dot: Option<String>,
 ) -> eyre::Result<String> {
     use proc_macro2::{Ident, Span, TokenStream};
-    let lib_name_ident = Ident::new(&lib_name, Span::call_site());
+    let lib_name_ident = Ident::new(lib_name, Span::call_site());
 
     let inputs = {
         let control_file_path = control_file_path
@@ -501,7 +501,7 @@ fn second_build(
 
     if !features_arg.trim().is_empty() {
         command.arg("--features");
-        command.arg(&features_arg);
+        command.arg(features_arg);
     }
 
     if features.no_default_features {

@@ -131,7 +131,7 @@ pub(crate) fn install_extension(
     let mut output_tracking = Vec::new();
     let base_directory = base_directory.unwrap_or_else(|| PathBuf::from("/"));
     tracing::Span::current()
-        .record("base_directory", &tracing::field::display(&base_directory.display()));
+        .record("base_directory", tracing::field::display(&base_directory.display()));
 
     let manifest = Manifest::from_path(&package_manifest_path)?;
     let (control_file, extname) = find_control_file(&package_manifest_path)?;

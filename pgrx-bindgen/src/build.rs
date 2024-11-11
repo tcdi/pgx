@@ -315,7 +315,7 @@ fn generate_bindings(
     };
     for dest_dir in dest_dirs {
         let mut bindings_file = dest_dir.clone();
-        bindings_file.push(&format!("pg{major_version}.rs"));
+        bindings_file.push(format!("pg{major_version}.rs"));
         write_rs_file(
             rewritten_items.clone(),
             &bindings_file,
@@ -334,7 +334,7 @@ fn generate_bindings(
         })?;
 
         let mut oids_file = dest_dir.clone();
-        oids_file.push(&format!("pg{major_version}_oids.rs"));
+        oids_file.push(format!("pg{major_version}_oids.rs"));
         write_rs_file(oids.clone(), &oids_file, quote! {}, is_for_release).wrap_err_with(|| {
             format!(
                 "Unable to write oids file for pg{} to `{}`",

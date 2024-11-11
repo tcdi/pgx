@@ -273,7 +273,7 @@ fn untar(bytes: &[u8], pgrxdir: &Path, pg_config: &PgConfig, init: &Init) -> eyr
     let _token = init.jobserver.get().unwrap().acquire().unwrap();
 
     let mut unpackdir = pgrxdir.to_path_buf();
-    unpackdir.push(&format!("{}_unpack", pg_config.version()?));
+    unpackdir.push(format!("{}_unpack", pg_config.version()?));
     if unpackdir.exists() {
         // delete everything at this path if it already exists
         println!("{} {}", "     Removing".bold().green(), unpackdir.display());
