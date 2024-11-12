@@ -67,6 +67,13 @@ impl Oid {
         Oid(id)
     }
 
+    /// Creates an Oid from an arbitrary u32.
+    ///
+    /// This is the same as the [`From::from`] implementation, but available in a `const` context.
+    pub const fn from_u32(id: u32) -> Oid {
+        Oid(id)
+    }
+
     /// Gets an Oid from a u32 if it is a valid builtin declared by Postgres
     pub const fn from_builtin(id: u32) -> Result<Oid, NotBuiltinOid> {
         match BuiltinOid::from_u32(id) {
