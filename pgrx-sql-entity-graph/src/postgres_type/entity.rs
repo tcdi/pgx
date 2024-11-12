@@ -16,13 +16,82 @@
 
 */
 use crate::mapping::RustSqlMapping;
+use crate::pgrx_attribute::{ArgValue, PgrxArg, PgrxAttribute};
 use crate::pgrx_sql::PgrxSql;
 use crate::to_sql::entity::ToSqlConfigEntity;
 use crate::to_sql::ToSql;
 use crate::{SqlGraphEntity, SqlGraphIdentifier, TypeMatch};
-use std::collections::BTreeSet;
-
 use eyre::eyre;
+use proc_macro2::TokenStream;
+use quote::{format_ident, quote, ToTokens, TokenStreamExt};
+use std::collections::BTreeSet;
+use syn::spanned::Spanned;
+use syn::{AttrStyle, Attribute, Lit};
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Alignment {
+    On,
+    Off,
+}
+
+const INVALID_ATTR_CONTENT: &str =
+    r#"expected `#[pgrx(alignment = align)]`, where `align` is "on", or "off""#;
+
+impl ToTokens for Alignment {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        let value = match self {
+            Alignment::On => format_ident!("On"),
+            Alignment::Off => format_ident!("Off"),
+        };
+        let quoted = quote! {
+            ::pgrx::pgrx_sql_entity_graph::Alignment::#value
+        };
+        tokens.append_all(quoted);
+    }
+}
+
+impl Alignment {
+    pub fn from_attribute(attr: &Attribute) -> Result<Option<Self>, syn::Error> {
+        if attr.style != AttrStyle::Outer {
+            return Err(syn::Error::new(
+                attr.span(),
+                "#[pgrx(alignment = ..)] is only valid in an outer context",
+            ));
+        }
+
+        let attr = attr.parse_args::<PgrxAttribute>()?;
+        for arg in attr.args.iter() {
+            let PgrxArg::NameValue(ref nv) = arg;
+            if !nv.path.is_ident("alignment") {
+                continue;
+            }
+
+            return match nv.value {
+                ArgValue::Lit(Lit::Str(ref s)) => match s.value().as_ref() {
+                    "on" => Ok(Some(Self::On)),
+                    "off" => Ok(Some(Self::Off)),
+                    _ => Err(syn::Error::new(s.span(), INVALID_ATTR_CONTENT)),
+                },
+                ArgValue::Path(ref p) => Err(syn::Error::new(p.span(), INVALID_ATTR_CONTENT)),
+                ArgValue::Lit(ref l) => Err(syn::Error::new(l.span(), INVALID_ATTR_CONTENT)),
+            };
+        }
+
+        Ok(None)
+    }
+
+    pub fn from_attributes(attrs: &[Attribute]) -> Result<Self, syn::Error> {
+        for attr in attrs {
+            if attr.path().is_ident("pgrx") {
+                if let Some(v) = Self::from_attribute(attr)? {
+                    return Ok(v);
+                }
+            }
+        }
+        Ok(Self::Off)
+    }
+}
+
 /// The output of a [`PostgresType`](crate::postgres_type::PostgresTypeDerive) from `quote::ToTokens::to_tokens`.
 #[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PostgresTypeEntity {
@@ -37,6 +106,7 @@ pub struct PostgresTypeEntity {
     pub out_fn: &'static str,
     pub out_fn_module_path: String,
     pub to_sql_config: ToSqlConfigEntity,
+    pub alignment: Option<usize>,
 }
 
 impl TypeMatch for PostgresTypeEntity {
@@ -82,6 +152,7 @@ impl ToSql for PostgresTypeEntity {
             out_fn,
             out_fn_module_path,
             in_fn,
+            alignment,
             ..
         }) = item_node
         else {
@@ -155,6 +226,24 @@ impl ToSql for PostgresTypeEntity {
             schema = context.schema_prefix_for(&self_index),
         );
 
+        let alignment = alignment
+            .map(|alignment| {
+                assert!(alignment.is_power_of_two());
+                let alignment = match alignment {
+                    1 => "char",
+                    2 => "int2",
+                    4 => "int4",
+                    8 => "double",
+                    _ => panic!("type '{name}' wants unsupported alignment '{alignment}'"),
+                };
+                format!(
+                    ",\n\
+                    \tALIGNMENT = {}",
+                    alignment
+                )
+            })
+            .unwrap_or_default();
+
         let materialized_type = format! {
             "\n\
                 -- {file}:{line}\n\
@@ -163,7 +252,7 @@ impl ToSql for PostgresTypeEntity {
                     \tINTERNALLENGTH = variable,\n\
                     \tINPUT = {schema_prefix_in_fn}{in_fn}, /* {in_fn_path} */\n\
                     \tOUTPUT = {schema_prefix_out_fn}{out_fn}, /* {out_fn_path} */\n\
-                    \tSTORAGE = extended\n\
+                    \tSTORAGE = extended{alignment}\n\
                 );\
             ",
             schema = context.schema_prefix_for(&self_index),
