@@ -232,13 +232,15 @@ impl ToSql for SqlGraphEntity {
                     result
                 } else if context
                     .graph
-                    .neighbors_undirected(*context.externs.get(item).unwrap())
+                    .neighbors_undirected(context.graph_root/* *context.externs.get(item).unwrap()*/)
                     .any(|neighbor| {
                         let SqlGraphEntity::Type(PostgresTypeEntity {
                             in_fn,
                             in_fn_module_path,
                             out_fn,
                             out_fn_module_path,
+                            typmod_in_fn,
+                            typmod_in_fn_module_path,
                             ..
                         }) = &context.graph[neighbor]
                         else {
@@ -249,7 +251,9 @@ impl ToSql for SqlGraphEntity {
                             && item.full_path.ends_with(in_fn);
                         let is_out_fn = item.full_path.starts_with(out_fn_module_path)
                             && item.full_path.ends_with(out_fn);
-                        is_in_fn || is_out_fn
+                        let is_typmod_in_fn = item.full_path.starts_with(typmod_in_fn_module_path)
+                            && item.full_path.ends_with(typmod_in_fn);
+                        is_in_fn || is_out_fn || is_typmod_in_fn
                     })
                 {
                     Ok(String::default())

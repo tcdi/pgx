@@ -54,6 +54,7 @@ pub struct PostgresTypeDerive {
     generics: Generics,
     in_fn: Ident,
     out_fn: Ident,
+    typmod_in_fn: Ident,
     to_sql_config: ToSqlConfig,
 }
 
@@ -63,12 +64,13 @@ impl PostgresTypeDerive {
         generics: Generics,
         in_fn: Ident,
         out_fn: Ident,
+        typmod_in_fn: Ident,
         to_sql_config: ToSqlConfig,
     ) -> Result<CodeEnrichment<Self>, syn::Error> {
         if !to_sql_config.overrides_default() {
             crate::ident_is_acceptable_to_postgres(&name)?;
         }
-        Ok(CodeEnrichment(Self { generics, name, in_fn, out_fn, to_sql_config }))
+        Ok(CodeEnrichment(Self { generics, name, in_fn, out_fn, typmod_in_fn, to_sql_config }))
     }
 
     pub fn from_derive_input(
@@ -90,11 +92,16 @@ impl PostgresTypeDerive {
             &format!("{}_out", derive_input.ident).to_lowercase(),
             derive_input.ident.span(),
         );
+        let funcname_typmod_in = Ident::new(
+            &format!("{}_typmod_in", derive_input.ident).to_lowercase(),
+            derive_input.ident.span(),
+        );
         Self::new(
             derive_input.ident,
             derive_input.generics,
             funcname_in,
             funcname_out,
+            funcname_typmod_in,
             to_sql_config,
         )
     }
@@ -124,6 +131,7 @@ impl ToEntityGraphTokens for PostgresTypeDerive {
 
         let in_fn = &self.in_fn;
         let out_fn = &self.out_fn;
+        let typmod_in_fn = &self.typmod_in_fn;
 
         let sql_graph_entity_fn_name = format_ident!("__pgrx_internals_type_{}", self.name);
 
@@ -189,6 +197,13 @@ impl ToEntityGraphTokens for PostgresTypeDerive {
                         let _ = path_items.pop(); // Drop the one we don't want.
                         path_items.join("::")
                     },
+                    typmod_in_fn: stringify!(#typmod_in_fn),
+                    typmod_in_fn_module_path: {
+                        let typmod_in_fn = stringify!(#typmod_in_fn);
+                        let mut path_items: Vec<_> = typmod_in_fn.split("::").collect();
+                        let _ = path_items.pop(); // Drop the one we don't want.
+                        path_items.join("::")
+                    },
                     to_sql_config: #to_sql_config,
                 };
                 ::pgrx::pgrx_sql_entity_graph::SqlGraphEntity::Type(submission)
@@ -205,6 +220,7 @@ impl Parse for CodeEnrichment<PostgresTypeDerive> {
         let to_sql_config = ToSqlConfig::from_attributes(attrs.as_slice())?.unwrap_or_default();
         let in_fn = Ident::new(&format!("{}_in", ident).to_lowercase(), ident.span());
         let out_fn = Ident::new(&format!("{}_out", ident).to_lowercase(), ident.span());
-        PostgresTypeDerive::new(ident, generics, in_fn, out_fn, to_sql_config)
+        let typmod_in_fn = Ident::new(&format!("{}_typmod_in", ident).to_lowercase(), ident.span());
+        PostgresTypeDerive::new(ident, generics, in_fn, out_fn, typmod_in_fn, to_sql_config)
     }
 }
