@@ -157,6 +157,7 @@
 #include "tsearch/ts_utils.h"
 #include "tcop/tcopprot.h"
 #include "tcop/utility.h"
+#include "utils/acl.h"
 #include "utils/builtins.h"
 #include "utils/date.h"
 #include "utils/datetime.h"

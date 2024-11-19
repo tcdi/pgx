@@ -160,6 +160,7 @@
 #include "tcop/utility.h"
 #include "tsearch/ts_public.h"
 #include "tsearch/ts_utils.h"
+#include "utils/acl.h"
 #include "utils/builtins.h"
 #include "utils/date.h"
 #include "utils/datetime.h"
