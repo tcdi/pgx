@@ -37,6 +37,7 @@
 #include "access/xlog_internal.h"
 #include "access/xlogreader.h"
 #include "access/xlogutils.h"
+#include "catalog/catalog.h"
 #include "catalog/dependency.h"
 #include "catalog/index.h"
 #include "catalog/indexing.h"
