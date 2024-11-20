@@ -231,7 +231,7 @@ macro_rules! pg_module_magic {
 macro_rules! pg_magic_func {
     () => {
         #[no_mangle]
-        #[allow(non_snake_case)]
+        #[allow(non_snake_case, unexpected_cfgs)]
         #[doc(hidden)]
         pub extern "C" fn Pg_magic_func() -> &'static ::pgrx::pg_sys::Pg_magic_struct {
             static MY_MAGIC: ::pgrx::pg_sys::Pg_magic_struct = ::pgrx::pg_sys::Pg_magic_struct {
@@ -306,11 +306,16 @@ pub(crate) enum Utf8Compat {
 #[macro_export]
 macro_rules! pgrx_embed {
     () => {
-        #[cfg(not(pgrx_embed))]
-        fn main() {
-            panic!("PGRX_EMBED was not set.");
+        mod pgrx_embed {
+            #![allow(unexpected_cfgs)]
+
+            #[cfg(not(pgrx_embed))]
+            pub fn main() {
+                panic!("PGRX_EMBED was not set.");
+            }
+            #[cfg(pgrx_embed)]
+            include!(env!("PGRX_EMBED"));
         }
-        #[cfg(pgrx_embed)]
-        include!(env!("PGRX_EMBED"));
+        pub use pgrx_embed::main;
     };
 }

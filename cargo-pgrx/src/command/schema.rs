@@ -458,7 +458,7 @@ fn compute_codegen(
         out
     };
     Ok(quote::quote! {
-        fn main() {
+        pub fn main() {
             #inputs
             #build
             #outputs
