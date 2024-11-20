@@ -16,7 +16,7 @@ use std::cell::Cell;
 use std::fmt::{Display, Formatter};
 use std::hint::unreachable_unchecked;
 use std::panic::{
-    catch_unwind, panic_any, resume_unwind, AssertUnwindSafe, Location, PanicInfo, UnwindSafe,
+    catch_unwind, panic_any, resume_unwind, AssertUnwindSafe, Location, PanicHookInfo, UnwindSafe,
 };
 
 use crate::elog::PgLogLevel;
@@ -112,8 +112,8 @@ impl From<&Location<'_>> for ErrorReportLocation {
     }
 }
 
-impl From<&PanicInfo<'_>> for ErrorReportLocation {
-    fn from(pi: &PanicInfo<'_>) -> Self {
+impl From<&PanicHookInfo<'_>> for ErrorReportLocation {
+    fn from(pi: &PanicHookInfo<'_>) -> Self {
         pi.location().map(|l| l.into()).unwrap_or_default()
     }
 }
