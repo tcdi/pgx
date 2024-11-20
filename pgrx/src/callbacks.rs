@@ -8,6 +8,7 @@
 //LICENSE
 //LICENSE Use of this source code is governed by the MIT license that can be found in the LICENSE file.
 //! Provides safe wrappers around Postgres' "Transaction" and "Sub Transaction" hook system
+#![allow(static_mut_refs)]
 
 use crate as pgrx; // for #[pg_guard] support from within ourself
 use crate::pg_sys;

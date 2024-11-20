@@ -9,6 +9,7 @@
 //LICENSE Use of this source code is governed by the MIT license that can be found in the LICENSE file.
 //! A trait and registration system for hooking Postgres internal operations such as its planner and executor
 #![allow(clippy::unit_arg)]
+#![allow(static_mut_refs)]
 #![deprecated(
     since = "0.12.1",
     note = "currently always UB, use FFI + pointers to `static UnsafeCell`"
