@@ -15,7 +15,11 @@
 
 `pgrx` supports Postgres 12 through Postgres 17.
 
-**Feel free to join our [Discord Server](https://discord.gg/PMrpdJsqcJ).**
+## Want to chat with us or get a question answered?
+
+**Please join our [Discord Server](https://discord.gg/PMrpdJsqcJ).**
+
+**We are also in need of financial [sponsorship](https://checkout.square.site/merchant/MLHG5M9GAXQPV/checkout/2OW2SULDQBSZ2JLHSLRZQLZH).**
 
 ## Key Features
 
@@ -312,8 +316,7 @@ error[E0080]: evaluation of constant value failed
 
 ## Contributing
 
-We are most definitely open to contributions of any kind.  Bug Reports, Feature Requests, Documentation,
-and even [sponsorships](https://github.com/sponsors/eeeebbbbrrrr).
+We are most definitely open to contributions of any kind.  Bug Reports, Feature Requests, and Documentation.
 
 If you'd like to contribute code via a Pull Request, please make it against our `develop` branch.  The `master` branch is no longer used.
 
