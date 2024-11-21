@@ -17,9 +17,9 @@
 
 ## Want to chat with us or get a question answered?
 
-**Please join our [Discord Server](https://discord.gg/PMrpdJsqcJ).**
+   + **Please join our [Discord Server](https://discord.gg/PMrpdJsqcJ).**
 
-**We are also in need of financial [sponsorship](https://checkout.square.site/merchant/MLHG5M9GAXQPV/checkout/2OW2SULDQBSZ2JLHSLRZQLZH).**
+   + **We are also in need of financial [sponsorship](https://checkout.square.site/merchant/MLHG5M9GAXQPV/checkout/2OW2SULDQBSZ2JLHSLRZQLZH).**
 
 ## Key Features
 
