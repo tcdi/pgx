@@ -86,7 +86,7 @@ impl PgMinorVersion {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PgVersion {
     pub major: u16,
     pub minor: PgMinorVersion,
@@ -269,22 +269,23 @@ impl PgConfig {
         Ok((major, minor))
     }
 
-    fn get_version(&self) -> eyre::Result<(u16, PgMinorVersion)> {
+    pub fn get_version(&self) -> eyre::Result<PgVersion> {
         let version_string = self.run("--version")?;
-        Self::parse_version_str(&version_string)
+        let (major, minor) = Self::parse_version_str(&version_string)?;
+        Ok(PgVersion::new(major, minor, None))
     }
 
     pub fn major_version(&self) -> eyre::Result<u16> {
         match &self.version {
             Some(version) => Ok(version.major),
-            None => Ok(self.get_version()?.0),
+            None => Ok(self.get_version()?.major),
         }
     }
 
-    pub fn minor_version(&self) -> eyre::Result<PgMinorVersion> {
+    fn minor_version(&self) -> eyre::Result<PgMinorVersion> {
         match &self.version {
             Some(version) => Ok(version.minor),
-            None => Ok(self.get_version()?.1),
+            None => Ok(self.get_version()?.minor),
         }
     }
 

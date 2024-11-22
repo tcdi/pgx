@@ -11,7 +11,7 @@ use bindgen::callbacks::{DeriveTrait, EnumVariantValue, ImplementsTrait, MacroPa
 use bindgen::NonCopyUnionStyle;
 use eyre::{eyre, WrapErr};
 use pgrx_pg_config::{
-    is_supported_major_version, PgConfig, PgConfigSelector, PgMinorVersion, Pgrx,
+    is_supported_major_version, PgConfig, PgConfigSelector, PgMinorVersion, PgVersion, Pgrx,
     SUPPORTED_VERSIONS,
 };
 use quote::{quote, ToTokens};
@@ -28,16 +28,16 @@ const BLOCKLISTED_TYPES: [&str; 3] = ["Datum", "NullableDatum", "Oid"];
 
 // These postgres versions were effectively "yanked" by the community, even tho they still exist
 // in the wild.  pgrx will refuse to compile against them
-const YANKED_POSTGRES_VERSIONS: &[(u16, u16)] = &[
+const YANKED_POSTGRES_VERSIONS: &[PgVersion] = &[
     // this set of releases introduced an ABI break in the [`pg_sys::ResultRelInfo`] struct
     // and was replaced by the community on 2024-11-21
     // https://www.postgresql.org/about/news/postgresql-172-166-1510-1415-1318-and-1222-released-2965/
-    (17, 1),
-    (16, 5),
-    (15, 9),
-    (14, 14),
-    (13, 17),
-    (12, 21),
+    PgVersion::new(17, PgMinorVersion::Release(1), None),
+    PgVersion::new(16, PgMinorVersion::Release(5), None),
+    PgVersion::new(15, PgMinorVersion::Release(9), None),
+    PgVersion::new(14, PgMinorVersion::Release(14), None),
+    PgVersion::new(13, PgMinorVersion::Release(17), None),
+    PgVersion::new(12, PgMinorVersion::Release(21), None),
 ];
 
 pub(super) mod clang;
@@ -227,14 +227,6 @@ pub fn main() -> eyre::Result<()> {
         if let Ok(pg_config) = PgConfig::from_env() {
             let major_version = pg_config.major_version()?;
 
-            if let PgMinorVersion::Release(minor_version_number) = pg_config.minor_version()? {
-                if YANKED_POSTGRES_VERSIONS.contains(&(major_version, minor_version_number)) {
-                    panic!("Postgres v{major_version}.{minor_version_number} is incompatible with \
-                    other versions in this major series and is not supported by pgrx.  Please upgrade \
-                    to the latest version in the v{major_version} series.");
-                }
-            }
-
             if major_version != found_major {
                 panic!("Feature flag `pg{found_major}` does not match version from the environment-described PgConfig (`{major_version}`)")
             }
@@ -244,6 +236,17 @@ pub fn main() -> eyre::Result<()> {
             vec![(found_ver.major, specific)]
         }
     };
+
+    // make sure we're not trying to build any of the yanked postgres versions
+    for (_, pg_config) in &pg_configs {
+        let version = pg_config.get_version()?;
+        if YANKED_POSTGRES_VERSIONS.contains(&version) {
+            panic!("Postgres v{}{} is incompatible with \
+                    other versions in this major series and is not supported by pgrx.  Please upgrade \
+                    to the latest version in the v{} series.", version.major, version.minor, version.major);
+        }
+    }
+
     std::thread::scope(|scope| {
         // This is pretty much either always 1 (normally) or 5 (for releases),
         // but in the future if we ever have way more, we should consider
