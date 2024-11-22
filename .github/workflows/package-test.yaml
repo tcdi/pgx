@@ -30,6 +30,11 @@ jobs:
       - name: Rustup
         run: $TOOL_DIR/rustup.sh nightly
 
+      - name: Report version
+        run: |
+          cargo --version
+          pg_config --version
+
       - name: Install cargo pgrx
         run: cargo +nightly install --path cargo-pgrx --debug
 
