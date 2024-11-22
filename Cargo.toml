@@ -55,11 +55,11 @@ exclude = [
 cargo-pgrx = { path = "cargo-pgrx" }
 
 [workspace.dependencies]
-pgrx-macros = { path = "./pgrx-macros", version = "=0.12.8" }
-pgrx-pg-sys = { path = "./pgrx-pg-sys", version = "=0.12.8" }
-pgrx-sql-entity-graph = { path = "./pgrx-sql-entity-graph", version = "=0.12.8" }
-pgrx-pg-config = { path = "./pgrx-pg-config", version = "=0.12.8" }
-pgrx-bindgen = { path = "./pgrx-bindgen", version = "0.12.8" }
+pgrx-macros = { path = "./pgrx-macros", version = "=0.12.9" }
+pgrx-pg-sys = { path = "./pgrx-pg-sys", version = "=0.12.9" }
+pgrx-sql-entity-graph = { path = "./pgrx-sql-entity-graph", version = "=0.12.9" }
+pgrx-pg-config = { path = "./pgrx-pg-config", version = "=0.12.9" }
+pgrx-bindgen = { path = "./pgrx-bindgen", version = "0.12.9" }
 
 cargo_metadata = "0.18.0"
 cargo-edit = "0.12.2" # format-preserving edits to cargo.toml

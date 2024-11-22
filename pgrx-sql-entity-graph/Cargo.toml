@@ -10,7 +10,7 @@
  
 [package]
 name = "pgrx-sql-entity-graph"
-version = "0.12.8"
+version = "0.12.9"
 authors = ["PgCentral Foundation, Inc. <contact@pgcentral.org>"]
 license = "MIT"
 description = "Sql Entity Graph for `pgrx`"

@@ -146,7 +146,7 @@ pub const PACKAGE_NAME: &::core::ffi::CStr =
     unsafe { ::core::ffi::CStr::from_bytes_with_nul_unchecked(b"PostgreSQL\0") };
 #[allow(unsafe_code)]
 pub const PACKAGE_STRING: &::core::ffi::CStr =
-    unsafe { ::core::ffi::CStr::from_bytes_with_nul_unchecked(b"PostgreSQL 17.0\0") };
+    unsafe { ::core::ffi::CStr::from_bytes_with_nul_unchecked(b"PostgreSQL 17.2\0") };
 #[allow(unsafe_code)]
 pub const PACKAGE_TARNAME: &::core::ffi::CStr =
     unsafe { ::core::ffi::CStr::from_bytes_with_nul_unchecked(b"postgresql\0") };
@@ -155,7 +155,7 @@ pub const PACKAGE_URL: &::core::ffi::CStr =
     unsafe { ::core::ffi::CStr::from_bytes_with_nul_unchecked(b"https://www.postgresql.org/\0") };
 #[allow(unsafe_code)]
 pub const PACKAGE_VERSION: &::core::ffi::CStr =
-    unsafe { ::core::ffi::CStr::from_bytes_with_nul_unchecked(b"17.0\0") };
+    unsafe { ::core::ffi::CStr::from_bytes_with_nul_unchecked(b"17.2\0") };
 #[allow(unsafe_code)]
 pub const PG_KRB_SRVNAM: &::core::ffi::CStr =
     unsafe { ::core::ffi::CStr::from_bytes_with_nul_unchecked(b"postgres\0") };
@@ -163,15 +163,15 @@ pub const PG_KRB_SRVNAM: &::core::ffi::CStr =
 pub const PG_MAJORVERSION: &::core::ffi::CStr =
     unsafe { ::core::ffi::CStr::from_bytes_with_nul_unchecked(b"17\0") };
 pub const PG_MAJORVERSION_NUM: u32 = 17;
-pub const PG_MINORVERSION_NUM: u32 = 0;
+pub const PG_MINORVERSION_NUM: u32 = 2;
 pub const PG_USE_STDBOOL: u32 = 1;
 #[allow(unsafe_code)]
 pub const PG_VERSION: &::core::ffi::CStr =
-    unsafe { ::core::ffi::CStr::from_bytes_with_nul_unchecked(b"17.0\0") };
-pub const PG_VERSION_NUM: u32 = 170000;
+    unsafe { ::core::ffi::CStr::from_bytes_with_nul_unchecked(b"17.2\0") };
+pub const PG_VERSION_NUM: u32 = 170002;
 #[allow(unsafe_code)]
 pub const PG_VERSION_STR: &::core::ffi::CStr = unsafe {
-    :: core :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"PostgreSQL 17.0 on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0, 64-bit\0")
+    :: core :: ffi :: CStr :: from_bytes_with_nul_unchecked (b"PostgreSQL 17.2 on x86_64-pc-linux-gnu, compiled by gcc (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0, 64-bit\0")
 };
 pub const RELSEG_SIZE: u32 = 131072;
 pub const SIZEOF_BOOL: u32 = 1;
@@ -579,7 +579,7 @@ pub const PG_BINARY_W: &::core::ffi::CStr =
 pub const PGINVALID_SOCKET: i32 = -1;
 #[allow(unsafe_code)]
 pub const PG_BACKEND_VERSIONSTR: &::core::ffi::CStr =
-    unsafe { ::core::ffi::CStr::from_bytes_with_nul_unchecked(b"postgres (PostgreSQL) 17.0\n\0") };
+    unsafe { ::core::ffi::CStr::from_bytes_with_nul_unchecked(b"postgres (PostgreSQL) 17.2\n\0") };
 #[allow(unsafe_code)]
 pub const EXE: &::core::ffi::CStr =
     unsafe { ::core::ffi::CStr::from_bytes_with_nul_unchecked(b"\0") };
@@ -1485,6 +1485,7 @@ pub const ShareRowExclusiveLock: u32 = 6;
 pub const ExclusiveLock: u32 = 7;
 pub const AccessExclusiveLock: u32 = 8;
 pub const MaxLockMode: u32 = 8;
+pub const InplaceUpdateTupleLock: u32 = 7;
 pub const TYPECACHE_EQ_OPR: u32 = 1;
 pub const TYPECACHE_LT_OPR: u32 = 2;
 pub const TYPECACHE_GT_OPR: u32 = 4;
@@ -14251,6 +14252,7 @@ pub struct ResultRelInfo {
     pub ri_newTupleSlot: *mut TupleTableSlot,
     pub ri_oldTupleSlot: *mut TupleTableSlot,
     pub ri_projectNewInfoValid: bool,
+    pub ri_needLockTagTuple: bool,
     pub ri_TrigDesc: *mut TriggerDesc,
     pub ri_TrigFunctions: *mut FmgrInfo,
     pub ri_TrigWhenExprs: *mut *mut ExprState,
@@ -37785,6 +37787,18 @@ extern "C" {
         direction: ScanDirection::Type,
     ) -> HeapTuple;
     pub fn systable_endscan_ordered(sysscan: SysScanDesc);
+    pub fn systable_inplace_update_begin(
+        relation: Relation,
+        indexId: Oid,
+        indexOK: bool,
+        snapshot: Snapshot,
+        nkeys: ::core::ffi::c_int,
+        key: *const ScanKeyData,
+        oldtupcopy: *mut HeapTuple,
+        state: *mut *mut ::core::ffi::c_void,
+    );
+    pub fn systable_inplace_update_finish(state: *mut ::core::ffi::c_void, tuple: HeapTuple);
+    pub fn systable_inplace_update_cancel(state: *mut ::core::ffi::c_void);
     pub fn GetIndexAmRoutine(amhandler: Oid) -> *mut IndexAmRoutine;
     pub fn GetIndexAmRoutineByAmId(amoid: Oid, noerror: bool) -> *mut IndexAmRoutine;
     pub fn lookup_type_cache(type_id: Oid, flags: ::core::ffi::c_int) -> *mut TypeCacheEntry;
@@ -38987,7 +39001,9 @@ extern "C" {
     pub fn GetUserId() -> Oid;
     pub fn GetOuterUserId() -> Oid;
     pub fn GetSessionUserId() -> Oid;
+    pub fn GetSessionUserIsSuperuser() -> bool;
     pub fn GetAuthenticatedUserId() -> Oid;
+    pub fn SetAuthenticatedUserId(userid: Oid);
     pub fn GetUserIdAndSecContext(userid: *mut Oid, sec_context: *mut ::core::ffi::c_int);
     pub fn SetUserIdAndSecContext(userid: Oid, sec_context: ::core::ffi::c_int);
     pub fn InLocalUserIdChange() -> bool;
@@ -40360,6 +40376,22 @@ extern "C" {
         buffer: *mut Buffer,
         tmfd: *mut TM_FailureData,
     ) -> TM_Result::Type;
+    pub fn heap_inplace_lock(
+        relation: Relation,
+        oldtup_ptr: HeapTuple,
+        buffer: Buffer,
+        release_callback: ::core::option::Option<
+            unsafe extern "C" fn(arg1: *mut ::core::ffi::c_void),
+        >,
+        arg: *mut ::core::ffi::c_void,
+    ) -> bool;
+    pub fn heap_inplace_update_and_unlock(
+        relation: Relation,
+        oldtup: HeapTuple,
+        tuple: HeapTuple,
+        buffer: Buffer,
+    );
+    pub fn heap_inplace_unlock(relation: Relation, oldtup: HeapTuple, buffer: Buffer);
     pub fn heap_inplace_update(relation: Relation, tuple: HeapTuple);
     pub fn heap_prepare_freeze_tuple(
         tuple: HeapTupleHeader,
@@ -52134,6 +52166,7 @@ extern "C" {
         key4: Datum,
     ) -> HeapTuple;
     pub fn ReleaseSysCache(tuple: HeapTuple);
+    pub fn SearchSysCacheLocked1(cacheId: ::core::ffi::c_int, key1: Datum) -> HeapTuple;
     pub fn SearchSysCacheCopy(
         cacheId: ::core::ffi::c_int,
         key1: Datum,
@@ -52141,6 +52174,7 @@ extern "C" {
         key3: Datum,
         key4: Datum,
     ) -> HeapTuple;
+    pub fn SearchSysCacheLockedCopy1(cacheId: ::core::ffi::c_int, key1: Datum) -> HeapTuple;
     pub fn SearchSysCacheExists(
         cacheId: ::core::ffi::c_int,
         key1: Datum,

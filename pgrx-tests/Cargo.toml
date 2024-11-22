@@ -10,7 +10,7 @@
 
 [package]
 name = "pgrx-tests"
-version = "0.12.8"
+version = "0.12.9"
 authors = ["PgCentral Foundation, Inc. <contact@pgcentral.org>"]
 license = "MIT"
 description = "Test framework for 'pgrx'-based Postgres extensions"
@@ -72,7 +72,7 @@ rand = "0.8.5"
 [dependencies.pgrx] # Not unified in workspace due to default-features key
 path = "../pgrx"
 default-features = false
-version = "=0.12.8"
+version = "=0.12.9"
 
 [dev-dependencies]
 eyre.workspace = true # testing functions that return `eyre::Result`

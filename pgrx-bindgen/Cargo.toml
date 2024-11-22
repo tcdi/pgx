@@ -1,7 +1,7 @@
 [package]
 name = "pgrx-bindgen"
 description = "additional bindgen support for pgrx"
-version = "0.12.8"
+version = "0.12.9"
 edition = "2021"
 license = "MIT"
 homepage = "https://github.com/pgcentralfoundation/pgrx"
