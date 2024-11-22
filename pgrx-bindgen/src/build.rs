@@ -11,7 +11,8 @@ use bindgen::callbacks::{DeriveTrait, EnumVariantValue, ImplementsTrait, MacroPa
 use bindgen::NonCopyUnionStyle;
 use eyre::{eyre, WrapErr};
 use pgrx_pg_config::{
-    is_supported_major_version, PgConfig, PgConfigSelector, Pgrx, SUPPORTED_VERSIONS,
+    is_supported_major_version, PgConfig, PgConfigSelector, PgMinorVersion, Pgrx,
+    SUPPORTED_VERSIONS,
 };
 use quote::{quote, ToTokens};
 use std::cell::RefCell;
@@ -24,6 +25,20 @@ use std::rc::Rc;
 use syn::{Item, ItemConst};
 
 const BLOCKLISTED_TYPES: [&str; 3] = ["Datum", "NullableDatum", "Oid"];
+
+// These postgres versions were effectively "yanked" by the community, even tho they still exist
+// in the wild.  pgrx will refuse to compile against them
+const YANKED_POSTGRES_VERSIONS: &[(u16, u16)] = &[
+    // this set of releases introduced an ABI break in the [`pg_sys::ResultRelInfo`] struct
+    // and was replaced by the community on 2024-11-21
+    // https://www.postgresql.org/about/news/postgresql-172-166-1510-1415-1318-and-1222-released-2965/
+    (17, 1),
+    (16, 5),
+    (15, 9),
+    (14, 14),
+    (13, 17),
+    (12, 21),
+];
 
 pub(super) mod clang;
 
@@ -207,9 +222,18 @@ pub fn main() -> eyre::Result<()> {
                 ))
             }
         };
+
         let found_major = found_ver.major;
         if let Ok(pg_config) = PgConfig::from_env() {
             let major_version = pg_config.major_version()?;
+
+            if let PgMinorVersion::Release(minor_version_number) = pg_config.minor_version()? {
+                if YANKED_POSTGRES_VERSIONS.contains(&(major_version, minor_version_number)) {
+                    panic!("Postgres v{major_version}.{minor_version_number} is incompatible with \
+                    other versions in this major series and is not supported by pgrx.  Please upgrade \
+                    to the latest version in the v{major_version} series.");
+                }
+            }
 
             if major_version != found_major {
                 panic!("Feature flag `pg{found_major}` does not match version from the environment-described PgConfig (`{major_version}`)")

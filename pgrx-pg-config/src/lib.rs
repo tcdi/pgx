@@ -281,7 +281,7 @@ impl PgConfig {
         }
     }
 
-    fn minor_version(&self) -> eyre::Result<PgMinorVersion> {
+    pub fn minor_version(&self) -> eyre::Result<PgMinorVersion> {
         match &self.version {
             Some(version) => Ok(version.minor),
             None => Ok(self.get_version()?.1),
