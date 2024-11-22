@@ -25,7 +25,7 @@ jobs:
       - name: Install Postgres deps
         run: |
           sudo apt-get update -y -qq --fix-missing
-          sudo apt-get install -y postgresql-server-dev-$PG_VER
+          sudo apt-get install -y postgresql-$PG_VER postgresql-server-dev-$PG_VER
 
       - name: Rustup
         run: $TOOL_DIR/rustup.sh nightly
