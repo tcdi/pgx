@@ -22,6 +22,12 @@ jobs:
         with:
           prefix-key: "v1-pgrx--package-test"
 
+      - name: Setup release Postgres apt repo
+        run: |
+          sudo apt-get install -y wget gnupg
+          sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+
       - name: Install Postgres deps
         run: |
           sudo apt-get update -y -qq --fix-missing
