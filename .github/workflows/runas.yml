@@ -9,6 +9,8 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
+  TOOL_DIR: ./tools
+  PG_VER: 14
 
 jobs:
   ubuntu:
