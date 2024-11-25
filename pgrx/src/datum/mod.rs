@@ -211,9 +211,14 @@ pub trait PostgresType {}
 ///
 /// ```
 /// use pgrx::{oids_of, datum::IntoDatum};
-/// let v = oids_of![i32, f64];
-/// assert_eq!(v[0], i32::type_oid().into());
-/// assert_eq!(v[1], f64::type_oid().into());
+/// let oids = oids_of![i32, f64];
+/// assert_eq!(oids[0], i32::type_oid().into());
+/// assert_eq!(oids[1], f64::type_oid().into());
+///
+/// // the usual conversions or coercions are available
+/// let oid_vec = oids_of![i8, i16].to_vec();
+/// let no_oid = &oids_of![];
+/// assert_eq!(no_oid.len(), 0);
 /// ```
 #[macro_export]
 macro_rules! oids_of {
