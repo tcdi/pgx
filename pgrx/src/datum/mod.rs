@@ -205,12 +205,13 @@ impl<'src, T: IntoDatum> From<T> for DatumWithOid<'src> {
 /// Implemented automatically by `#[derive(PostgresType)]`
 pub trait PostgresType {}
 
-/// Creates a [`Vec<pg_sys::Oid>`] containing identifiers of the provded types.
+/// Creates an array of [`pg_sys::Oid`] with the OID of each provided type
 ///
 /// # Examples
 ///
 /// ```
 /// use pgrx::{oids_of, datum::IntoDatum};
+///
 /// let oids = oids_of![i32, f64];
 /// assert_eq!(oids[0], i32::type_oid().into());
 /// assert_eq!(oids[1], f64::type_oid().into());
@@ -223,6 +224,7 @@ pub trait PostgresType {}
 #[macro_export]
 macro_rules! oids_of {
     () =>(
+        // avoid coercions to an ambiguously-typed array or slice
         [$crate::pg_sys::PgOid::Invalid; 0]
     );
     ($($t:path),+ $(,)?) => (
