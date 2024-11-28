@@ -644,7 +644,7 @@ that generate extension artifacts will automatically copy these files, and only 
 to their final destination as dictated by `pg_config`.
 
 
-## Information about pgx-managed development environment
+## Information about pgrx-managed development environment
 
 ```console
 $ cargo pgrx info --help
@@ -664,7 +664,7 @@ Options:
   -V, --version     Print version
 ```
 
-`cargo pgx info` helps retrieving information about pgx-managed development
+`cargo pgrx info` helps retrieving information about pgrx-managed development
 environment (such as managed Postgres installations)
 
 ## EXPERIMENTAL: Versioned shared-object support
