@@ -54,6 +54,7 @@ pub(crate) fn create_crate_template(
     create_directory_structure(path.clone())?;
     create_control_file(path.clone(), name)?;
     create_cargo_toml(path.clone(), name)?;
+    create_github_ci_yaml(path.clone())?;
     create_dotcargo_config_toml(path.clone(), name)?;
     create_lib_rs(path.clone(), name, is_bgworker)?;
     create_git_ignore(path.clone(), name)?;
@@ -74,6 +75,12 @@ fn create_directory_structure(mut src_dir: PathBuf) -> Result<(), std::io::Error
 
     src_dir.push(".cargo");
     std::fs::create_dir_all(&src_dir)?;
+    src_dir.pop();
+
+    src_dir.push(".github");
+    src_dir.push("workflow");
+    std::fs::create_dir_all(&src_dir)?;
+    src_dir.pop();
     src_dir.pop();
 
     src_dir.push("sql");
@@ -97,6 +104,17 @@ fn create_cargo_toml(mut filename: PathBuf, name: &str) -> Result<(), std::io::E
     let mut file = std::fs::File::create(filename)?;
 
     file.write_all(format!(include_str!("../templates/cargo_toml"), name = name).as_bytes())?;
+
+    Ok(())
+}
+
+fn create_github_ci_yaml(mut filename: PathBuf) -> Result<(), std::io::Error> {
+    filename.push(".github");
+    filename.push("workflow");
+    filename.push("ci.yaml");
+    let mut file = std::fs::File::create(filename)?;
+
+    file.write_all(include_bytes!("../templates/ci_yaml"))?;
 
     Ok(())
 }

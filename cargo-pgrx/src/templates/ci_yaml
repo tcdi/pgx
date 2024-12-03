@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  release:
+    types: [ published ]
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+        if: github.event_name != 'release' && github.event_name != 'workflow_dispatch'
+      # fmt test can be done before installing pgrx
+      - run: cargo fmt --all -- --check
+      # PRGX must be installed in order to compile pgrx-pg-sys
+      # PRGX version must match the version in Cargo.toml
+      - run: cargo install cargo-pgrx --version $(sed -ne 's/pgrx = *\"=\(.*\)\"/\1/p' Cargo.toml) --locked --force
+      - run: cargo pgrx init
+      - run: RUSTFLAGS='-D warnings' cargo build --workspace --all-targets --bins --tests --lib --benches --examples
+      - run: RUSTDOCFLAGS="-D warnings" cargo doc --no-deps
+      - run: cargo clippy -- -D warnings
+      - run: cargo clippy --workspace --all-targets --bins --tests --lib --benches --examples -- -D warnings
+      - run: cargo pgrx test
