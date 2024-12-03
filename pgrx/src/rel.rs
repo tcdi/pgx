@@ -14,7 +14,7 @@ use crate::{
 use pgrx_sql_entity_graph::metadata::{
     ArgumentError, Returns, ReturnsError, SqlMapping, SqlTranslatable,
 };
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 use std::os::raw::c_char;
 
 pub struct PgRelation {
@@ -331,6 +331,12 @@ impl Deref for PgRelation {
 
     fn deref(&self) -> &Self::Target {
         &self.boxed
+    }
+}
+
+impl DerefMut for PgRelation {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.boxed
     }
 }
 
