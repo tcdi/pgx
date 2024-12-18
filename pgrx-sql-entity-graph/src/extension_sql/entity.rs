@@ -73,7 +73,7 @@ impl ToSql for ExtensionSqlEntity {
         let ExtensionSqlEntity { file, line, sql, creates, requires, .. } = self;
         let creates = if !creates.is_empty() {
             let joined =
-                creates.iter().map(|i| format!("--   {}", i)).collect::<Vec<_>>().join("\n");
+                creates.iter().map(|i| format!("--   {i}")).collect::<Vec<_>>().join("\n");
             format!(
                 "\
                 -- creates:\n\
@@ -84,7 +84,7 @@ impl ToSql for ExtensionSqlEntity {
         };
         let requires = if !requires.is_empty() {
             let joined =
-                requires.iter().map(|i| format!("--   {}", i)).collect::<Vec<_>>().join("\n");
+                requires.iter().map(|i| format!("--   {i}")).collect::<Vec<_>>().join("\n");
             format!(
                 "\
                -- requires:\n\
@@ -156,14 +156,14 @@ impl SqlDeclaredEntity {
                 .ok_or_else(|| eyre::eyre!("Did not get SQL for `{}`", name))?
                 .to_string(),
             name: name.to_string(),
-            option: format!("Option<{}>", name),
-            vec: format!("Vec<{}>", name),
-            vec_option: format!("Vec<Option<{}>>", name),
-            option_vec: format!("Option<Vec<{}>>", name),
-            option_vec_option: format!("Option<Vec<Option<{}>>", name),
-            array: format!("Array<{}>", name),
-            option_array: format!("Option<{}>", name),
-            varlena: format!("Varlena<{}>", name),
+            option: format!("Option<{name}>"),
+            vec: format!("Vec<{name}>"),
+            vec_option: format!("Vec<Option<{name}>>"),
+            option_vec: format!("Option<Vec<{name}>>"),
+            option_vec_option: format!("Option<Vec<Option<{name}>>"),
+            array: format!("Array<{name}>"),
+            option_array: format!("Option<{name}>"),
+            varlena: format!("Varlena<{name}>"),
             pg_box: vec![
                 format!("pgrx::pgbox::PgBox<{}>", name),
                 format!("pgrx::pgbox::PgBox<{}, pgrx::pgbox::AllocatedByRust>", name),

@@ -262,7 +262,7 @@ impl PgrxSql {
             create_dir_all(parent)?;
         }
         let mut out = File::create(path)?;
-        write!(out, "{}", generated)?;
+        write!(out, "{generated}")?;
         Ok(())
     }
 
@@ -281,7 +281,7 @@ impl PgrxSql {
 
         #[cfg(not(feature = "syntax-highlighting"))]
         {
-            write!(*out, "{}", generated)?;
+            write!(*out, "{generated}")?;
         }
 
         Ok(())
@@ -382,7 +382,7 @@ impl PgrxSql {
             create_dir_all(parent)?;
         }
         let mut out = File::create(path)?;
-        write!(out, "{:?}", generated)?;
+        write!(out, "{generated:?}")?;
         Ok(())
     }
 
@@ -456,7 +456,7 @@ impl PgrxSql {
             let extname = &self.extension_name;
             let extver = &self.control.default_version;
             // Note: versioned so-name format must agree with cargo pgrx
-            format!("$libdir/{}-{}", extname, extver)
+            format!("$libdir/{extname}-{extver}")
         } else {
             String::from("MODULE_PATHNAME")
         }

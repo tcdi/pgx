@@ -358,7 +358,7 @@ fn first_build(
         command.arg(arg);
     }
 
-    let command_str = format!("{:?}", command);
+    let command_str = format!("{command:?}");
     eprintln!(
         "{} for SQL generation with features `{}`",
         "    Building".bold().green(),
@@ -367,7 +367,7 @@ fn first_build(
 
     tracing::debug!(command = %command_str, "Running");
     let cargo_output =
-        command.output().wrap_err_with(|| format!("failed to spawn cargo: {}", command_str))?;
+        command.output().wrap_err_with(|| format!("failed to spawn cargo: {command_str}"))?;
     tracing::trace!(status_code = %cargo_output.status, command = %command_str, "Finished");
 
     if !cargo_output.status.success() {
@@ -522,7 +522,7 @@ fn second_build(
 
     command.env("PGRX_EMBED", embed_path.as_ref());
 
-    let command_str = format!("{:?}", command);
+    let command_str = format!("{command:?}");
     eprintln!(
         "{} {}, in debug mode, for SQL generation with features {}",
         "  Rebuilding".bold().green(),
@@ -532,7 +532,7 @@ fn second_build(
 
     tracing::debug!(command = %command_str, "Running");
     let cargo_output =
-        command.output().wrap_err_with(|| format!("failed to spawn cargo: {}", command_str))?;
+        command.output().wrap_err_with(|| format!("failed to spawn cargo: {command_str}"))?;
     tracing::trace!(status_code = %cargo_output.status, command = %command_str, "Finished");
 
     if !cargo_output.status.success() {
@@ -559,11 +559,11 @@ fn compute_sql(package_name: &str, manifest: &Manifest) -> eyre::Result<()> {
     });
     command.env("CARGO_PKG_VERSION", cargo_pkg_version);
 
-    let command_str = format!("{:?}", command);
+    let command_str = format!("{command:?}");
     tracing::debug!(command = %command_str, "Running");
     let embed_output = command
         .output()
-        .wrap_err_with(|| format!("failed to spawn pgrx_embed: {}", command_str))?;
+        .wrap_err_with(|| format!("failed to spawn pgrx_embed: {command_str}"))?;
     tracing::trace!(status_code = %embed_output.status, command = %command_str, "Finished");
 
     if !embed_output.status.success() {

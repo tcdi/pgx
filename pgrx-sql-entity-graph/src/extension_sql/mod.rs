@@ -275,7 +275,7 @@ impl Parse for ExtensionSqlAttribute {
             other => {
                 return Err(syn::Error::new(
                     ident.span(),
-                    format!("Unknown extension_sql attribute: {}", other),
+                    format!("Unknown extension_sql attribute: {other}"),
                 ))
             }
         };

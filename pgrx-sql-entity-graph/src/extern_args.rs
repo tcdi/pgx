@@ -51,7 +51,7 @@ impl core::fmt::Display for ExternArgs {
             ExternArgs::NoGuard => Ok(()),
             ExternArgs::Schema(_) => Ok(()),
             ExternArgs::Name(_) => Ok(()),
-            ExternArgs::Cost(cost) => write!(f, "COST {}", cost),
+            ExternArgs::Cost(cost) => write!(f, "COST {cost}"),
             ExternArgs::Requires(_) => Ok(()),
         }
     }

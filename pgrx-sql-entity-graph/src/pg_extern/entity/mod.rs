@@ -103,7 +103,7 @@ impl ToSql for PgExternEntity {
         let module_pathname = &context.get_module_pathname();
         let schema = self
             .schema
-            .map(|schema| format!("{}.", schema))
+            .map(|schema| format!("{schema}."))
             .unwrap_or_else(|| context.schema_prefix_for(&self_index));
         let arguments = if !self.fn_args.is_empty() {
             let mut args = Vec::new();
@@ -130,7 +130,7 @@ impl ToSql for PgExternEntity {
                                             schema_prefix = context.schema_prefix_for(&graph_index),
                                             // First try to match on [`TypeId`] since it's most reliable.
                                             sql_type = argument_sql,
-                                            default = if let Some(def) = arg.used_ty.default { format!(" DEFAULT {}", def) } else { String::from("") },
+                                            default = if let Some(def) = arg.used_ty.default { format!(" DEFAULT {def}") } else { String::from("") },
                                             variadic = if metadata_argument.variadic { "VARIADIC " } else { "" },
                                             maybe_comma = if needs_comma { ", " } else { " " },
                                             type_name = metadata_argument.type_name,
@@ -154,7 +154,7 @@ impl ToSql for PgExternEntity {
                             schema_prefix = context.schema_prefix_for(&graph_index),
                             // First try to match on [`TypeId`] since it's most reliable.
                             sql_type = sql,
-                            default = if let Some(def) = arg.used_ty.default { format!(" DEFAULT {}", def) } else { String::from("") },
+                            default = if let Some(def) = arg.used_ty.default { format!(" DEFAULT {def}") } else { String::from("") },
                             variadic = if metadata_argument.variadic { "VARIADIC " } else { "" },
                             maybe_comma = if needs_comma { ", " } else { " " },
                             type_name = metadata_argument.type_name,
@@ -255,7 +255,7 @@ impl ToSql for PgExternEntity {
                     );
                     items.push_str(&item);
                 }
-                format!("RETURNS TABLE ({}\n)", items)
+                format!("RETURNS TABLE ({items}\n)")
             }
             PgExternReturnEntity::Trigger => String::from("RETURNS trigger"),
         };
@@ -307,7 +307,7 @@ impl ToSql for PgExternEntity {
                     "-- requires:\n{}\n",
                     requires_attrs
                         .iter()
-                        .map(|i| format!("--   {}", i))
+                        .map(|i| format!("--   {i}"))
                         .collect::<Vec<_>>()
                         .join("\n")
                 )
@@ -327,16 +327,16 @@ impl ToSql for PgExternEntity {
         if let Some(op) = &self.operator {
             let mut optionals = vec![];
             if let Some(it) = op.commutator {
-                optionals.push(format!("\tCOMMUTATOR = {}", it));
+                optionals.push(format!("\tCOMMUTATOR = {it}"));
             };
             if let Some(it) = op.negator {
-                optionals.push(format!("\tNEGATOR = {}", it));
+                optionals.push(format!("\tNEGATOR = {it}"));
             };
             if let Some(it) = op.restrict {
-                optionals.push(format!("\tRESTRICT = {}", it));
+                optionals.push(format!("\tRESTRICT = {it}"));
             };
             if let Some(it) = op.join {
-                optionals.push(format!("\tJOIN = {}", it));
+                optionals.push(format!("\tJOIN = {it}"));
             };
             if op.hashes {
                 optionals.push(String::from("\tHASHES"));
@@ -423,7 +423,7 @@ impl ToSql for PgExternEntity {
 
             let schema = self
                 .schema
-                .map(|schema| format!("{}.", schema))
+                .map(|schema| format!("{schema}."))
                 .unwrap_or_else(|| context.schema_prefix_for(&self_index));
 
             let operator_sql = format!("\n\n\
