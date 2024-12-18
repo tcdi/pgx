@@ -561,9 +561,8 @@ fn compute_sql(package_name: &str, manifest: &Manifest) -> eyre::Result<()> {
 
     let command_str = format!("{command:?}");
     tracing::debug!(command = %command_str, "Running");
-    let embed_output = command
-        .output()
-        .wrap_err_with(|| format!("failed to spawn pgrx_embed: {command_str}"))?;
+    let embed_output =
+        command.output().wrap_err_with(|| format!("failed to spawn pgrx_embed: {command_str}"))?;
     tracing::trace!(status_code = %embed_output.status, command = %command_str, "Finished");
 
     if !embed_output.status.success() {

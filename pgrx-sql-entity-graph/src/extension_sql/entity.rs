@@ -72,8 +72,7 @@ impl ToSql for ExtensionSqlEntity {
     fn to_sql(&self, _context: &PgrxSql) -> eyre::Result<String> {
         let ExtensionSqlEntity { file, line, sql, creates, requires, .. } = self;
         let creates = if !creates.is_empty() {
-            let joined =
-                creates.iter().map(|i| format!("--   {i}")).collect::<Vec<_>>().join("\n");
+            let joined = creates.iter().map(|i| format!("--   {i}")).collect::<Vec<_>>().join("\n");
             format!(
                 "\
                 -- creates:\n\
