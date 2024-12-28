@@ -29,6 +29,16 @@ mod rss {
 
     use crate::command::build_agent_for_url;
 
+    #[cfg(not(target_os = "windows"))]
+    fn download_url(major: u16, minor: u16) -> String {
+        format!("https://ftp.postgresql.org/pub/source/v{major}.{minor}/postgresql-{major}.{minor}.tar.bz2")
+    }
+
+    #[cfg(target_os = "windows")]
+    fn download_url(major: u16, minor: u16) -> String {
+        format!("https://get.enterprisedb.com/postgresql/postgresql-{major}.{minor}-1-windows-x64-binaries.zip")
+    }
+
     pub(super) struct PostgreSQLVersionRss;
 
     impl PostgreSQLVersionRss {
@@ -65,9 +75,7 @@ mod rss {
                     if matches!(known_pgver.minor, PgMinorVersion::Latest) {
                         // fill in the latest minor version number and its url
                         known_pgver.minor = PgMinorVersion::Release(minor);
-                        known_pgver.url = Some(Url::parse(
-                                &format!("https://ftp.postgresql.org/pub/source/v{major}.{minor}/postgresql-{major}.{minor}.tar.bz2")
-                            )?);
+                        known_pgver.url = Some(Url::parse(&download_url(major, minor))?);
                     }
                 }
             }

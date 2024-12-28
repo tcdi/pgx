@@ -156,9 +156,107 @@ pub fn get_pg_major_version_num() -> u16 {
     u16::from_str(super::get_pg_major_version_string()).unwrap()
 }
 
+#[cfg(any(not(target_env = "msvc"), feature = "pg17"))]
 #[inline]
 pub fn get_pg_version_string() -> &'static str {
     super::PG_VERSION_STR.to_str().unwrap()
+}
+
+#[cfg(all(
+    target_env = "msvc",
+    any(feature = "pg12", feature = "pg13", feature = "pg14", feature = "pg15", feature = "pg16")
+))]
+#[inline]
+pub fn get_pg_version_string() -> &'static str {
+    // bindgen cannot get value of PG_VERSION_STR
+    // PostgreSQL @0@ on @1@-@2@, compiled by @3@-@4@, @5@-bit
+    static PG_VERSION_STR: [u8; 256] = const {
+        let major = super::PG_MAJORVERSION_NUM;
+        let minor = super::PG_MINORVERSION_NUM;
+        #[cfg(target_pointer_width = "32")]
+        let pointer_width = 32_u32;
+        #[cfg(target_pointer_width = "64")]
+        let pointer_width = 64_u32;
+        // a fake value
+        let msc_ver = b"1700";
+        let mut buffer = [0u8; 256];
+        let mut pointer = 0;
+        {
+            let s = b"PostgreSQL ";
+            let mut i = 0;
+            while i < s.len() {
+                buffer[pointer + i] = s[i];
+                i += 1;
+            }
+            pointer += s.len();
+        }
+        {
+            buffer[pointer + 0] = b'0' + (major / 10) as u8;
+            buffer[pointer + 1] = b'0' + (major % 10) as u8;
+            pointer += 2;
+        }
+        {
+            let s = b".";
+            let mut i = 0;
+            while i < s.len() {
+                buffer[pointer + i] = s[i];
+                i += 1;
+            }
+            pointer += s.len();
+        }
+        if minor < 10 {
+            buffer[pointer + 0] = b'0' + (minor % 10) as u8;
+            pointer += 1;
+        } else {
+            buffer[pointer + 0] = b'0' + (minor / 10) as u8;
+            buffer[pointer + 1] = b'0' + (minor % 10) as u8;
+            pointer += 2;
+        }
+        {
+            let s = b", compiled by Visual C++ build ";
+            let mut i = 0;
+            while i < s.len() {
+                buffer[pointer + i] = s[i];
+                i += 1;
+            }
+            pointer += s.len();
+        }
+        {
+            let s = msc_ver;
+            let mut i = 0;
+            while i < s.len() {
+                buffer[pointer + i] = s[i];
+                i += 1;
+            }
+            pointer += s.len();
+        }
+        {
+            let s = b", ";
+            let mut i = 0;
+            while i < s.len() {
+                buffer[pointer + i] = s[i];
+                i += 1;
+            }
+            pointer += s.len();
+        }
+        {
+            buffer[pointer + 0] = b'0' + (pointer_width / 10) as u8;
+            buffer[pointer + 1] = b'0' + (pointer_width % 10) as u8;
+            pointer += 2;
+        }
+        {
+            let s = b"-bit";
+            let mut i = 0;
+            while i < s.len() {
+                buffer[pointer + i] = s[i];
+                i += 1;
+            }
+            pointer += s.len();
+        }
+        buffer[pointer] = 0;
+        buffer
+    };
+    unsafe { std::ffi::CStr::from_ptr(PG_VERSION_STR.as_ptr().cast()).to_str().unwrap() }
 }
 
 #[inline]

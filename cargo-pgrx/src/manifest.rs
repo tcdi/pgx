@@ -96,7 +96,7 @@ pub(crate) fn modify_features_for_version(
         // that aren't valid for the manifest
         if test {
             features.features.retain(|flag| {
-                if manifest.features.contains_key(flag) {
+                if manifest.features.contains_key(flag) || flag == "pgrx/cshim" {
                     true
                 } else {
                     use owo_colors::OwoColorize;

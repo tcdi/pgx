@@ -14,7 +14,7 @@ use bzip2::bufread::BzDecoder;
 use eyre::{eyre, WrapErr};
 use owo_colors::OwoColorize;
 use pgrx_pg_config::{
-    get_c_locale_flags, prefix_path, ConfigToml, PgConfig, PgConfigSelector, Pgrx, PgrxHomeError,
+    get_c_locale_flags, ConfigToml, PgConfig, PgConfigSelector, Pgrx, PgrxHomeError,
 };
 use tar::Archive;
 
@@ -23,9 +23,10 @@ use std::fs::File;
 use std::io::{Read, Write};
 use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::Stdio;
 use std::sync::OnceLock;
 
+#[cfg(not(target_os = "windows"))]
 static PROCESS_ENV_DENYLIST: &[&str] = &[
     "DEBUG",
     "MAKEFLAGS",
@@ -287,8 +288,18 @@ fn untar(bytes: &[u8], pgrxdir: &Path, pg_config: &PgConfig, init: &Init) -> eyr
         pg_config.version()?,
         unpackdir.display()
     );
-    let mut tar_decoder = Archive::new(BzDecoder::new(bytes));
-    tar_decoder.unpack(&unpackdir)?;
+
+    if bytes.starts_with(b"PK\x03\x04")
+        || bytes.starts_with(b"PK\x05\x06")
+        || bytes.starts_with(b"PK\x07\x08")
+    {
+        // it's a zip download from EDB
+        use std::io::Cursor;
+        zip_extract::extract(Cursor::new(bytes), &unpackdir, false)?;
+    } else {
+        let mut tar_decoder = Archive::new(BzDecoder::new(bytes));
+        tar_decoder.unpack(&unpackdir)?;
+    }
 
     let mut pgdir = pgrxdir.to_path_buf();
     pgdir.push(&pg_config.version()?);
@@ -327,7 +338,9 @@ fn untar(bytes: &[u8], pgrxdir: &Path, pg_config: &PgConfig, init: &Init) -> eyr
     Ok(pgdir)
 }
 
-fn fixup_homebrew_for_icu(configure_cmd: &mut Command) {
+#[cfg(not(target_os = "windows"))]
+fn fixup_homebrew_for_icu(configure_cmd: &mut std::process::Command) {
+    use std::process::Command;
     // See if it's disabled via an argument
     if configure_cmd.get_args().any(|a| a == "--without-icu") {
         return;
@@ -399,7 +412,10 @@ fn fixup_homebrew_for_icu(configure_cmd: &mut Command) {
     }
 }
 
+#[cfg(not(target_os = "windows"))]
 fn configure_postgres(pg_config: &PgConfig, pgdir: &Path, init: &Init) -> eyre::Result<()> {
+    use pgrx_pg_config::prefix_path;
+
     let _token = init.jobserver.get().unwrap().acquire().unwrap();
 
     println!("{} Postgres v{}", "  Configuring".bold().green(), pg_config.version()?);
@@ -463,6 +479,12 @@ fn configure_postgres(pg_config: &PgConfig, pgdir: &Path, init: &Init) -> eyre::
     }
 }
 
+#[cfg(target_os = "windows")]
+fn configure_postgres(_pg_config: &PgConfig, _pgdir: &Path, _init: &Init) -> eyre::Result<()> {
+    Ok(())
+}
+
+#[cfg(not(target_os = "windows"))]
 fn make_postgres(pg_config: &PgConfig, pgdir: &Path, init: &Init) -> eyre::Result<()> {
     println!("{} Postgres v{}", "    Compiling".bold().green(), pg_config.version()?);
     let mut command = std::process::Command::new("make");
@@ -496,6 +518,12 @@ fn make_postgres(pg_config: &PgConfig, pgdir: &Path, init: &Init) -> eyre::Resul
     }
 }
 
+#[cfg(target_os = "windows")]
+fn make_postgres(_pg_config: &PgConfig, _pgdir: &Path, _init: &Init) -> eyre::Result<()> {
+    Ok(())
+}
+
+#[cfg(not(target_os = "windows"))]
 fn make_install_postgres(version: &PgConfig, pgdir: &Path, init: &Init) -> eyre::Result<PgConfig> {
     println!(
         "{} Postgres v{} to {}",
@@ -534,6 +562,18 @@ fn make_install_postgres(version: &PgConfig, pgdir: &Path, init: &Init) -> eyre:
             String::from_utf8(output.stderr).unwrap()
         ))
     }
+}
+
+#[cfg(target_os = "windows")]
+fn make_install_postgres(
+    _version: &PgConfig,
+    pgdir: &Path,
+    _init: &Init,
+) -> eyre::Result<PgConfig> {
+    let mut pg_config = get_pg_installdir(pgdir);
+    pg_config.push("bin");
+    pg_config.push("pg_config.exe");
+    Ok(PgConfig::new_with_defaults(pg_config))
 }
 
 fn validate_pg_config(pg_config: &PgConfig) -> eyre::Result<()> {
@@ -575,10 +615,16 @@ fn write_config(pg_configs: &Vec<PgConfig>, init: &Init) -> eyre::Result<()> {
     Ok(())
 }
 
+#[cfg(not(target_os = "windows"))]
 fn get_pg_installdir(pgdir: &Path) -> PathBuf {
     let mut dir = pgdir.to_path_buf();
     dir.push("pgrx-install");
     dir
+}
+
+#[cfg(target_os = "windows")]
+fn get_pg_installdir(pgdir: &Path) -> PathBuf {
+    pgdir.to_path_buf()
 }
 
 #[cfg(unix)]
@@ -597,7 +643,11 @@ fn is_root_user() -> bool {
 
 pub(crate) fn initdb(bindir: &Path, datadir: &Path) -> eyre::Result<()> {
     println!(" {} data directory at {}", "Initializing".bold().green(), datadir.display());
-    let mut command = std::process::Command::new(format!("{}/initdb", bindir.display()));
+    #[cfg(not(target_os = "windows"))]
+    let initdb = bindir.join("initdb");
+    #[cfg(target_os = "windows")]
+    let initdb = bindir.join("initdb.exe");
+    let mut command = std::process::Command::new(initdb);
     command
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())

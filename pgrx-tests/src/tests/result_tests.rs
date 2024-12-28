@@ -96,10 +96,13 @@ mod tests {
         Err(pgrx::spi::Error::InvalidPosition)
     }
 
-    #[pg_test(error = "No such file or directory (os error 2)")]
+    #[pg_test(error = "I am a platform-independent and locale-agnostic string")]
     fn test_return_io_error() -> Result<(), std::io::Error> {
-        std::fs::read("/tmp/i-sure-hope-this-doest-exist.pgrx-tests::test_result_result")
-            .map(|_| ())
+        use std::io::{Error, ErrorKind};
+        Err(Error::new(
+            ErrorKind::NotFound,
+            "I am a platform-independent and locale-agnostic string",
+        ))
     }
 
     #[pg_test]

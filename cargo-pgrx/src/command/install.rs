@@ -129,9 +129,6 @@ pub(crate) fn install_extension(
     features: &clap_cargo::Features,
 ) -> eyre::Result<Vec<PathBuf>> {
     let mut output_tracking = Vec::new();
-    let base_directory = base_directory.unwrap_or_else(|| PathBuf::from("/"));
-    tracing::Span::current()
-        .record("base_directory", tracing::field::display(&base_directory.display()));
 
     let manifest = Manifest::from_path(&package_manifest_path)?;
     let (control_file, extname) = find_control_file(&package_manifest_path)?;
@@ -147,18 +144,25 @@ pub(crate) fn install_extension(
         build_command_stream.collect::<Result<Vec<_>, std::io::Error>>()?;
 
     println!("{} extension", "  Installing".bold().green());
-    let pkgdir = make_relative(pg_config.pkglibdir()?);
-    let extdir = make_relative(pg_config.extension_dir()?);
     let shlibpath = find_library_file(&manifest, &build_command_messages)?;
 
+    let extdir = if let Some(base_directory) = base_directory.as_ref() {
+        base_directory.join(make_relative_extdir(pg_config.extension_dir()?))
+    } else {
+        pg_config.extension_dir()?
+    };
+
+    let pkglibdir = if let Some(base_directory) = base_directory.as_ref() {
+        base_directory.join(make_relative_pkglibdir(pg_config.pkglibdir()?))
+    } else {
+        pg_config.pkglibdir()?
+    };
+
     {
-        let mut dest = base_directory.clone();
-        dest.push(&extdir);
-        dest.push(
-            control_file
-                .file_name()
-                .ok_or_else(|| eyre!("Could not get filename for `{}`", control_file.display()))?,
-        );
+        let filename = control_file
+            .file_name()
+            .ok_or_else(|| eyre!("Could not get filename for `{}`", control_file.display()))?;
+        let dest = extdir.join(filename);
         copy_file(
             &control_file,
             dest,
@@ -171,9 +175,6 @@ pub(crate) fn install_extension(
     }
 
     {
-        let mut dest = base_directory.clone();
-        dest.push(&pkgdir);
-
         let so_name = if versioned_so {
             let extver = get_version(&package_manifest_path)?;
             // note: versioned so-name format must agree with pgrx-utils
@@ -183,13 +184,18 @@ pub(crate) fn install_extension(
         };
         // Since Postgres 16, the shared library extension on macOS is `dylib`, not `so`.
         // Ref https://github.com/postgres/postgres/commit/b55f62abb2c2e07dfae99e19a2b3d7ca9e58dc1a
-        let so_extension = if cfg!(target_os = "macos") && pg_config.major_version().unwrap() >= 16
-        {
-            "dylib"
-        } else {
+        let so_ext = 'e: {
+            if cfg!(target_os = "macos") {
+                break 'e if pg_config.major_version().unwrap() >= 16 { "dylib" } else { "so" };
+            }
+            if cfg!(target_os = "windows") {
+                break 'e "dll";
+            }
             "so"
         };
-        dest.push(format!("{so_name}.{so_extension}"));
+        let filename = format!("{so_name}.{so_ext}");
+
+        let dest = pkglibdir.join(filename);
 
         // Remove the existing shared libraries if present. This is a workaround for an
         // issue highlighted by the following apple documentation:
@@ -224,7 +230,6 @@ pub(crate) fn install_extension(
         is_test,
         features,
         &extdir,
-        &base_directory,
         true,
         &mut output_tracking,
     )?;
@@ -339,21 +344,6 @@ pub(crate) fn build_extension(
     }
 }
 
-fn get_target_sql_file(
-    manifest_path: impl AsRef<Path>,
-    extdir: &Path,
-    base_directory: PathBuf,
-) -> eyre::Result<PathBuf> {
-    let mut dest = base_directory;
-    dest.push(extdir);
-
-    let (_, extname) = find_control_file(&manifest_path)?;
-    let version = get_version(&manifest_path)?;
-    dest.push(format!("{extname}--{version}.sql"));
-
-    Ok(dest)
-}
-
 fn copy_sql_files(
     user_manifest_path: Option<impl AsRef<Path>>,
     user_package: Option<&String>,
@@ -363,27 +353,30 @@ fn copy_sql_files(
     is_test: bool,
     features: &clap_cargo::Features,
     extdir: &Path,
-    base_directory: &Path,
     skip_build: bool,
     output_tracking: &mut Vec<PathBuf>,
 ) -> eyre::Result<()> {
-    let dest = get_target_sql_file(&package_manifest_path, extdir, base_directory.to_path_buf())?;
     let (_, extname) = find_control_file(&package_manifest_path)?;
+    {
+        let version = get_version(&package_manifest_path)?;
+        let filename = format!("{extname}--{version}.sql");
+        let dest = extdir.join(filename);
 
-    crate::command::schema::generate_schema(
-        pg_config,
-        user_manifest_path,
-        user_package,
-        &package_manifest_path,
-        profile,
-        is_test,
-        features,
-        Some(&dest),
-        Option::<String>::None,
-        None,
-        skip_build,
-        output_tracking,
-    )?;
+        crate::command::schema::generate_schema(
+            pg_config,
+            user_manifest_path,
+            user_package,
+            &package_manifest_path,
+            profile,
+            is_test,
+            features,
+            Some(&dest),
+            Option::<String>::None,
+            None,
+            skip_build,
+            output_tracking,
+        )?;
+    }
 
     // now copy all the version upgrade files too
     if let Ok(dir) = fs::read_dir("sql/") {
@@ -395,13 +388,9 @@ fn copy_sql_files(
                 regex::Regex::new(&format!(r"^{extname}--.+--.+\.sql$")).unwrap();
 
             if re_update_script_name.is_match(filename.as_str()) {
-                let mut dest = base_directory.to_path_buf();
-                dest.push(extdir);
-                dest.push(filename);
-
                 copy_file(
                     &sql.path(),
-                    dest,
+                    extdir.join(filename),
                     "extension schema upgrade file",
                     true,
                     &package_manifest_path,
@@ -422,7 +411,15 @@ pub(crate) fn find_library_file(
     // cargo sometimes decides to change whether targets are kebab-case or snake_case in metadata,
     // so normalize away the difference
     let target_name = manifest.target_name()?.replace('-', "_");
-    let so_ext = if cfg!(target_os = "macos") { "dylib" } else { "so" };
+    let so_ext = 'so_ext: {
+        if cfg!(target_os = "macos") {
+            break 'so_ext "dylib";
+        }
+        if cfg!(target_os = "windows") {
+            break 'so_ext "dll";
+        }
+        "so"
+    };
 
     // no hard and fast rule for the lib.so output filename exists, so we implement this routine
     // which is essentially a cope for cargo's disinterest in writing down any docs so far.
@@ -511,17 +508,36 @@ fn get_git_hash(manifest_path: impl AsRef<Path>) -> eyre::Result<String> {
     }
 }
 
-fn make_relative(path: PathBuf) -> PathBuf {
+#[cfg(not(target_os = "windows"))]
+fn make_relative_pkglibdir(path: PathBuf) -> PathBuf {
+    use std::path::Component;
     if path.is_relative() {
         return path;
     }
-    let mut relative = PathBuf::new();
-    let mut components = path.components();
-    components.next(); // skip the root
-    for part in components {
-        relative.push(part)
+    path.components()
+        .skip_while(|x| matches!(x, Component::Prefix(_) | Component::RootDir))
+        .collect()
+}
+
+#[cfg(target_os = "windows")]
+fn make_relative_pkglibdir(_: PathBuf) -> PathBuf {
+    "lib".into()
+}
+
+#[cfg(not(target_os = "windows"))]
+fn make_relative_extdir(path: PathBuf) -> PathBuf {
+    use std::path::Component;
+    if path.is_relative() {
+        return path;
     }
-    relative
+    path.components()
+        .skip_while(|x| matches!(x, Component::Prefix(_) | Component::RootDir))
+        .collect()
+}
+
+#[cfg(target_os = "windows")]
+fn make_relative_extdir(_: PathBuf) -> PathBuf {
+    "share/extension".into()
 }
 
 pub(crate) fn format_display_path(path: impl AsRef<Path>) -> eyre::Result<String> {
