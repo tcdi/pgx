@@ -220,8 +220,13 @@ cargo pgrx init
 | `timestamp with time zone` | `pgrx::TimestampWithTimeZone`                           |
 | `anyarray`                 | `pgrx::AnyArray`                                        |
 | `anyelement`               | `pgrx::AnyElement`                                      |
-| `box`                      | `pgrx::pg_sys::BOX`                                     |
-| `point`                    | `pgrx::pg_sys::Point`                                   |
+| `box`                      | `pgrx::geo::Box`                                        |
+| `circle`                   | `pgrx::geo::Circle`                                     |
+| `line`                     | `pgrx::geo::Line`                                       |
+| `lseg`                     | `pgrx::geo::LineSegment`                                |
+| `path`                     | `pgrx::geo::Path`                                       |
+| `point`                    | `pgrx::geo::Point`                                      |
+| `polygon`                  | `pgrx::geo::Polygon`                                    |
 | `tid`                      | `pgrx::pg_sys::ItemPointerData`                         |
 | `cstring`                  | `&core::ffi::CStr`                                      |
 | `inet`                     | `pgrx::Inet(String)` -- TODO: needs better support      |
