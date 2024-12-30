@@ -10,3 +10,4 @@ cmake*/
 .direnv
 pgrx-examples/*/target
 /bin
+result
