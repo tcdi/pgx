@@ -1,0 +1,70 @@
+
+name: Test PGRX under valgrind
+
+permissions:
+  contents: read
+
+on:
+  # Run nightly
+  schedule:
+    - cron: '0 1 * * *'
+  # TODO: optionally take a specific SHA maybe?
+  workflow_dispatch:
+  # DONOTLAND just for testing during dev
+  pull_request:
+
+env:
+  RUST_BACKTRACE: '1'
+  CARGO_INCREMENTAL: '0'
+
+jobs:
+  valgrind:
+    name: Valgrind tests ${{ matrix.pg_version }}
+    strategy:
+      fail-fast: false # We want all of them to run, even if one fails
+      matrix:
+        pg_version: ["pg11", "pg12", "pg13", "pg14", "pg15", "pg16"]
+
+    # FIXME: PGRX?
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 'Install system dependencies'
+        run: |
+          sudo apt-get update && sudo apt-get install -y \
+            build-essential \
+            bzip2 \
+            clang \
+            libclang-dev \
+            llvm \
+            cmake \
+            libz-dev \
+            zlib1g-dev \
+            libssl-dev \
+            pkg-config \
+            libreadline-dev \
+            libicu-dev \
+            bison \
+            flex \
+            valgrind
+
+      - name: 'Setup Rust'
+        run: |
+          rustup toolchain install stable
+          rustup default stable
+
+      # I don't think we need to explicitly checkout a branch now that we have
+      # `develop` as default.
+      - uses: actions/checkout@v3
+
+      - run: 'cargo install --path cargo-pgrx/ --debug --force'
+
+      - name: 'Download and compile ${{ matrix.pg_version }} (asserts and valgrind)'
+        run: 'cargo pgrx init --valgrind --${{ matrix.pg_version }}=download'
+
+      - run: 'env USE_VALGRIND=1 cargo test --no-default-features --features="${{ matrix.pg_version }} cshim" --verbose'
+      # :(...
+      - run: cargo clean
+
+      - run: 'env USE_VALGRIND=1 cargo test --no-default-features --features="${{ matrix.pg_version }}" --verbose'
+
