@@ -1,0 +1,64 @@
+name: upload release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        type: string
+        description: Tag
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  upload-release:
+    name: upload-release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            target: x86_64-unknown-linux-musl
+            pkg_fmt: .tar.gz
+            binary_ext: ""
+          - os: macos-13
+            target: x86_64-apple-darwin
+            pkg_fmt: .tar.gz
+            binary_ext: ""
+          - os: macos-14
+            target: aarch64-apple-darwin
+            pkg_fmt: .tar.gz
+            binary_ext: ""
+          - os: windows-2022
+            target: x86_64-pc-windows-msvc
+            pkg_fmt: .zip
+            binary_ext: .exe
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag }}
+      - name: Upload cargo-pgrx
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          if [ "${{ matrix.os }}" = "ubuntu-22.04" ]; then
+            sudo apt install musl-tools
+          fi
+          rustup target add ${{ matrix.target }}
+          cargo build -p cargo-pgrx --bin cargo-pgrx --features cargo-edit/vendored-openssl --target ${{ matrix.target }} --release
+
+          mkdir -p build
+          cp README.md ./build/
+          cp LICENSE ./build/
+          cp ./target/${{ matrix.target }}/release/cargo-pgrx${{ matrix.binary_ext }} ./build/
+
+          DIST=cargo-pgrx-${{ github.event.inputs.tag }}-${{ matrix.target }}${{ matrix.pkg_fmt }}
+          if [ "${{ matrix.os }}" = "windows-2022" ]; then
+            (cd build && 7z a ../$DIST .)
+          else
+            tar czf $DIST -C build .
+          fi
+          gh release upload ${{ github.event.inputs.tag }} $DIST
