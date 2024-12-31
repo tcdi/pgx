@@ -94,6 +94,8 @@ pub trait SqlGraphIdentifier {
     fn line(&self) -> Option<u32>;
 }
 
+pub use postgres_type::Alignment;
+
 /// An entity corresponding to some SQL required by the extension.
 #[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum SqlGraphEntity {
