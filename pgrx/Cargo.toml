@@ -61,6 +61,7 @@ enum-map = "2.6.3"
 atomic-traits = "0.3.0" # PgAtomic and shmem init
 bitflags = "2.4.0" # BackgroundWorker
 bitvec = "1.0" # processing array nullbitmaps
+bstr = { version = "1.10", default-features = false}
 heapless = "0.8" # shmem and PgLwLock
 libc.workspace = true # FFI type compat
 seahash = "4.1.0" # derive(PostgresHash)

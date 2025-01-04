@@ -8,15 +8,269 @@
 //LICENSE
 //LICENSE Use of this source code is governed by the MIT license that can be found in the LICENSE file.
 #![allow(clippy::precedence)]
-use crate::datum::Array;
+#![allow(unused)]
+#![deny(unsafe_op_in_unsafe_fn)]
+use crate::datum::{Array, BorrowDatum, Datum};
+use crate::layout::{Align, Layout};
+use crate::nullable::Nullable;
+use crate::pgrx_sql_entity_graph::metadata::{
+    ArgumentError, Returns, ReturnsError, SqlMapping, SqlTranslatable,
+};
 use crate::toast::{Toast, Toasty};
 use crate::{layout, pg_sys, varlena};
-use bitvec::ptr::{self as bitptr, BitPtr, BitPtrError, Mut};
-use bitvec::slice::BitSlice;
+use bitvec::ptr::{self as bitptr, BitPtr, BitPtrError, Const, Mut};
+use bitvec::slice::{self as bitslice, BitSlice};
+use core::iter::{ExactSizeIterator, FusedIterator};
+use core::marker::PhantomData;
 use core::ptr::{self, NonNull};
-use core::slice;
+use core::{ffi, mem, slice};
 
 mod port;
+
+/** `pg_sys::ArrayType` and its unsized varlena
+
+# Safety
+`&FlatArray<'_, T>` assumes its tail is the remainder of a Postgres array of element `T`.
+*/
+#[repr(C)]
+#[derive(Debug)]
+pub struct FlatArray<'mcx, T: ?Sized> {
+    scalar: PhantomData<&'mcx T>,
+    head: pg_sys::ArrayType,
+    tail: [u8],
+}
+
+impl<'mcx, T> FlatArray<'mcx, T>
+where
+    T: ?Sized,
+{
+    fn as_raw(&self) -> RawArray {
+        unsafe {
+            let ptr = NonNull::new_unchecked(ptr::from_ref(self).cast_mut());
+            RawArray::from_ptr(ptr.cast())
+        }
+    }
+
+    /// Number of elements in the Array, including nulls
+    ///
+    /// Note that for many Arrays, this doesn't have a linear relationship with array byte-len.
+    #[doc(alias = "cardinality")]
+    #[doc(alias = "nelems")]
+    pub fn count(&self) -> usize {
+        self.as_raw().len()
+    }
+
+    pub fn dims(&self) -> Dimensions {
+        // SAFETY: Validity of the ptr and ndim field was asserted upon obtaining the FlatArray ref,
+        // so can assume the dims ptr is also valid, allowing making the slice.
+        unsafe {
+            let ptr = self as *const Self as *const pg_sys::ArrayType;
+            let ndim = self.head.ndim as usize;
+            let dims = slice::from_raw_parts(port::ARR_DIMS(ptr.cast_mut()), ndim);
+            Dimensions { dims }
+        }
+    }
+}
+
+impl<'mcx, T> FlatArray<'mcx, T>
+where
+    T: ?Sized + BorrowDatum,
+{
+    /// Iterate the array
+    #[doc(alias = "unnest")]
+    pub fn iter(&self) -> ArrayIter<'_, T> {
+        let nelems = self.count();
+        let raw = self.as_raw();
+        let nulls =
+            raw.nulls_bitptr().map(|p| unsafe { bitslice::from_raw_parts(p, nelems).unwrap() });
+
+        let data = unsafe { NonNull::new_unchecked(raw.data_ptr().cast_mut()) };
+        let arr = self;
+        let index = 0;
+        let offset = 0;
+        let align = Layout::lookup_oid(self.head.elemtype).align;
+
+        ArrayIter { data, nulls, nelems, arr, index, offset, align }
+    }
+
+    pub fn iter_non_null(&self) -> impl Iterator<Item = &T> {
+        self.iter().filter_map(|elem| elem.into_option())
+    }
+
+    /*
+    /**
+    Some problems with the design of an iter_mut for FlatArray:
+    In order to traverse the array, we need to assume well-formedness of e.g. cstring/varlena elements,
+    but &mut would allow safely updating varlenas within their span, e.g. injecting \0 into cstrings.
+    making it so that nothing allows making an ill-formed varlena via &mut seems untenable, also?
+    probably only viable to expose &mut for fixed-size types, then
+    */
+    pub fn iter_mut(&mut self) -> ArrayIterMut<'mcx, T> {
+        ???
+    }
+    */
+    /// Borrow the nth element.
+    ///
+    /// `FlatArray::nth` may have to iterate the array, thus it is named for `Iterator::nth`,
+    /// as opposed to a constant-time `get`.
+    pub fn nth(&self, index: usize) -> Option<Nullable<&T>> {
+        self.iter().nth(index)
+    }
+
+    /*
+    /// Mutably borrow the nth element.
+    ///
+    /// `FlatArray::nth_mut` may have to iterate the array, thus it is named for `Iterator::nth`.
+    pub fn nth_mut(&mut self, index: usize) -> Option<Nullable<&mut T>> {
+        // FIXME: consider nullability
+        // FIXME: Become a dispatch to Iterator::nth
+        todo!()
+    }
+    */
+
+    pub fn nulls(&self) -> Option<&[u8]> {
+        let len = self.count() + 7 >> 3; // Obtains 0 if len was 0.
+
+        // SAFETY: This obtains the nulls pointer from a function that must either
+        // return a null pointer or a pointer to a valid null bitmap.
+        unsafe {
+            let nulls_ptr = port::ARR_NULLBITMAP(ptr::addr_of!(self.head).cast_mut());
+            ptr::slice_from_raw_parts(nulls_ptr, len).as_ref()
+        }
+    }
+
+    /** Oxidized form of [ARR_NULLBITMAP(ArrayType*)][arr_nullbitmap]
+
+    If this returns None, the array *cannot* have nulls.
+    Note that unlike the `is_null: bool` that appears elsewhere, 1 is "valid" and 0 is "null".
+
+    # Safety
+    Trailing bits must be set to 0, and all elements marked with 1 must be initialized.
+    The null bitmap is linear but the layout of elements may be nonlinear, so for some arrays
+    these cannot be calculated directly from each other.
+
+    [ARR_NULLBITMAP]: <https://git.postgresql.org/gitweb/?p=postgresql.git;a=blob;f=src/include/utils/array.h;h=4ae6c3be2f8b57afa38c19af2779f67c782e4efc;hb=278273ccbad27a8834dfdf11895da9cd91de4114#l293>
+    */
+    pub unsafe fn nulls_mut(&mut self) -> Option<&mut [u8]> {
+        let len = self.count() + 7 >> 3; // Obtains 0 if len was 0.
+
+        // SAFETY: This obtains the nulls pointer from a function that must either
+        // return a null pointer or a pointer to a valid null bitmap.
+        unsafe {
+            let nulls_ptr = port::ARR_NULLBITMAP(ptr::addr_of_mut!(self.head));
+            ptr::slice_from_raw_parts_mut(nulls_ptr, len).as_mut()
+        }
+    }
+}
+
+unsafe impl<T: ?Sized> BorrowDatum for FlatArray<'_, T> {
+    const PASS: layout::PassBy = layout::PassBy::Ref;
+    unsafe fn point_from(ptr: ptr::NonNull<u8>) -> ptr::NonNull<Self> {
+        unsafe {
+            let len =
+                varlena::varsize_any(ptr.as_ptr().cast()) - mem::size_of::<pg_sys::ArrayType>();
+            ptr::NonNull::new_unchecked(
+                ptr::slice_from_raw_parts_mut(ptr.as_ptr(), len) as *mut Self
+            )
+        }
+    }
+}
+
+unsafe impl<T> SqlTranslatable for &FlatArray<'_, T>
+where
+    T: ?Sized + SqlTranslatable,
+{
+    fn argument_sql() -> Result<SqlMapping, ArgumentError> {
+        match T::argument_sql()? {
+            SqlMapping::As(sql) => Ok(SqlMapping::As(format!("{sql}[]"))),
+            SqlMapping::Skip => Err(ArgumentError::SkipInArray),
+            SqlMapping::Composite { .. } => Ok(SqlMapping::Composite { array_brackets: true }),
+        }
+    }
+
+    fn return_sql() -> Result<Returns, ReturnsError> {
+        match T::return_sql()? {
+            Returns::One(SqlMapping::As(sql)) => {
+                Ok(Returns::One(SqlMapping::As(format!("{sql}[]"))))
+            }
+            Returns::One(SqlMapping::Composite { array_brackets: _ }) => {
+                Ok(Returns::One(SqlMapping::Composite { array_brackets: true }))
+            }
+            Returns::One(SqlMapping::Skip) => Err(ReturnsError::SkipInArray),
+            Returns::SetOf(_) => Err(ReturnsError::SetOfInArray),
+            Returns::Table(_) => Err(ReturnsError::TableInArray),
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct Dimensions<'arr> {
+    dims: &'arr [ffi::c_int],
+}
+
+impl<'arr> Dimensions<'arr> {
+    pub fn len(&self) -> usize {
+        self.dims.len()
+    }
+}
+
+/// Iterator for arrays
+#[derive(Clone)]
+pub struct ArrayIter<'arr, T>
+where
+    T: ?Sized + BorrowDatum,
+{
+    arr: &'arr FlatArray<'arr, T>,
+    data: ptr::NonNull<u8>,
+    nulls: Option<&'arr BitSlice<u8>>,
+    nelems: usize,
+    index: usize,
+    offset: usize,
+    align: Align,
+}
+
+impl<'arr, T> Iterator for ArrayIter<'arr, T>
+where
+    T: ?Sized + BorrowDatum,
+{
+    type Item = Nullable<&'arr T>;
+
+    fn next(&mut self) -> Option<Nullable<&'arr T>> {
+        if self.index >= self.nelems {
+            return None;
+        }
+        let is_null = match self.nulls {
+            Some(nulls) => !nulls.get(self.index).unwrap(),
+            None => false,
+        };
+        // note the index freezes when we reach the end, fusing the iterator
+        self.index += 1;
+
+        if is_null {
+            // note that we do NOT offset when the value is a null!
+            Some(Nullable::Null)
+        } else {
+            let borrow = unsafe { T::borrow_unchecked(self.data.add(self.offset)) };
+            // As we always have a borrow, we just ask Rust what the array element's size is
+            self.offset += self.align.pad(mem::size_of_val(borrow));
+            Some(Nullable::Valid(borrow))
+        }
+    }
+}
+
+impl<'arr, 'mcx, T> IntoIterator for &'arr FlatArray<'mcx, T>
+where
+    T: ?Sized + BorrowDatum,
+{
+    type IntoIter = ArrayIter<'arr, T>;
+    type Item = Nullable<&'arr T>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
+impl<'arr, T> ExactSizeIterator for ArrayIter<'arr, T> where T: ?Sized + BorrowDatum {}
+impl<'arr, T> FusedIterator for ArrayIter<'arr, T> where T: ?Sized + BorrowDatum {}
 
 /**
 An aligned, dereferenceable `NonNull<ArrayType>` with low-level accessors.
@@ -162,8 +416,7 @@ impl RawArray {
         }
     }
 
-    /**
-    A slice of the dimensions.
+    /** A slice describing the array's dimensions.
 
     Oxidized form of [ARR_DIMS(ArrayType*)][ARR_DIMS].
     The length will be within 0..=[pg_sys::MAXDIM].
@@ -186,6 +439,7 @@ impl RawArray {
     }
 
     /// The flattened length of the array over every single element.
+    ///
     /// Includes all items, even the ones that might be null.
     ///
     /// # Panics
@@ -226,8 +480,7 @@ impl RawArray {
         // This field is an "int32" in Postgres
     }
 
-    /**
-    Equivalent to [ARR_HASNULL(ArrayType*)][ARR_HASNULL].
+    /** Equivalent to [ARR_HASNULL(ArrayType*)][ARR_HASNULL].
 
     Note this means that it only asserts that there MIGHT be a null
 
@@ -247,16 +500,26 @@ impl RawArray {
     }
 
     #[inline]
-    fn nulls_bitptr(&mut self) -> Option<BitPtr<Mut, u8>> {
-        match BitPtr::try_from(self.nulls_mut_ptr()) {
+    fn nulls_bitptr(&self) -> Option<BitPtr<Const, u8>> {
+        let nulls_ptr = unsafe { port::ARR_NULLBITMAP(self.ptr.as_ptr()) }.cast_const();
+        match BitPtr::try_from(nulls_ptr) {
             Ok(ptr) => Some(ptr),
             Err(BitPtrError::Null(_)) => None,
-            Err(BitPtrError::Misaligned(_)) => unreachable!("impossible to misalign *mut u8"),
+            Err(BitPtrError::Misaligned(_)) => unreachable!(),
         }
     }
 
-    /**
-    Oxidized form of [ARR_NULLBITMAP(ArrayType*)][ARR_NULLBITMAP]
+    #[inline]
+    fn nulls_mut_bitptr(&mut self) -> Option<BitPtr<Mut, u8>> {
+        let nulls_ptr = unsafe { port::ARR_NULLBITMAP(self.ptr.as_ptr()) };
+        match BitPtr::try_from(self.nulls_mut_ptr()) {
+            Ok(ptr) => Some(ptr),
+            Err(BitPtrError::Null(_)) => None,
+            Err(BitPtrError::Misaligned(_)) => unreachable!(),
+        }
+    }
+
+    /** Oxidized form of [ARR_NULLBITMAP(ArrayType*)][ARR_NULLBITMAP]
 
     If this returns None, the array cannot have nulls.
     If this returns Some, it points to the bitslice that marks nulls in this array.
@@ -275,8 +538,8 @@ impl RawArray {
         NonNull::new(ptr::slice_from_raw_parts_mut(self.nulls_mut_ptr(), len))
     }
 
-    /**
-    The [bitvec] equivalent of [RawArray::nulls].
+    /** The [bitvec] equivalent of [RawArray::nulls].
+
     If this returns `None`, the array cannot have nulls.
     If this returns `Some`, it points to the bitslice that marks nulls in this array.
 
@@ -288,23 +551,21 @@ impl RawArray {
     [ARR_NULLBITMAP]: <https://git.postgresql.org/gitweb/?p=postgresql.git;a=blob;f=src/include/utils/array.h;h=4ae6c3be2f8b57afa38c19af2779f67c782e4efc;hb=278273ccbad27a8834dfdf11895da9cd91de4114#l293>
     */
     pub fn nulls_bitslice(&mut self) -> Option<NonNull<BitSlice<u8>>> {
-        NonNull::new(bitptr::bitslice_from_raw_parts_mut(self.nulls_bitptr()?, self.len()))
+        NonNull::new(bitptr::bitslice_from_raw_parts_mut(self.nulls_mut_bitptr()?, self.len()))
     }
 
-    /**
-    Checks the array for any NULL values by assuming it is a proper varlena array,
+    /** Checks the array for any NULL values
 
     # Safety
-
     * This requires every index is valid to read or correctly marked as null.
+
     */
     pub unsafe fn any_nulls(&self) -> bool {
         // SAFETY: Caller asserted safety conditions.
         unsafe { pg_sys::array_contains_nulls(self.ptr.as_ptr()) }
     }
 
-    /**
-    Oxidized form of [ARR_DATA_PTR(ArrayType*)][ARR_DATA_PTR]
+    /** Oxidized form of [ARR_DATA_PTR(ArrayType*)][ARR_DATA_PTR]
 
     # Safety
 

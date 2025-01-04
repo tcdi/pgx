@@ -218,6 +218,7 @@ mod tests {
 
     #[pg_test(expected = "attempt to add with overflow")]
     fn test_sum_array_i32_overflow() -> Result<Option<i64>, pgrx::spi::Error> {
+        // Note that this test is calling a builtin, array_agg
         Spi::get_one::<i64>(
             "SELECT sum_array(a) FROM (SELECT array_agg(s) a FROM generate_series(1, 1000000) s) x;",
         )
