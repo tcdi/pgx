@@ -243,7 +243,7 @@ mod tests {
 
     #[pg_test]
     fn test_srf_setof_datum_detoasting_with_borrow() {
-        let cnt = Spi::connect(|mut client| {
+        let cnt = Spi::connect_mut(|client| {
             // build up a table with one large column that Postgres will be forced to TOAST
             client.update("CREATE TABLE test_srf_datum_detoasting AS SELECT array_to_string(array_agg(g),' ') s FROM (SELECT 'a' g FROM generate_series(1, 1000)) x;", None, &[])?;
 
@@ -261,7 +261,7 @@ mod tests {
 
     #[pg_test]
     fn test_srf_table_datum_detoasting_with_borrow() {
-        let cnt = Spi::connect(|mut client| {
+        let cnt = Spi::connect_mut(|client| {
             // build up a table with one large column that Postgres will be forced to TOAST
             client.update("CREATE TABLE test_srf_datum_detoasting AS SELECT array_to_string(array_agg(g),' ') s FROM (SELECT 'a' g FROM generate_series(1, 1000)) x;", None, &[])?;
 

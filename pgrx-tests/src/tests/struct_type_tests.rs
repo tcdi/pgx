@@ -57,7 +57,7 @@ mod tests {
 
     #[pg_test]
     fn test_complex_storage_and_retrieval() -> Result<(), pgrx::spi::Error> {
-        let complex = Spi::connect(|mut client| {
+        let complex = Spi::connect_mut(|client| {
             client.update(
                 "CREATE TABLE complex_test AS SELECT s as id, (s || '.0, 2.0' || s)::complex as value FROM generate_series(1, 1000) s;\
                 SELECT value FROM complex_test ORDER BY id;", None, &[])?.first().get_one::<PgBox<Complex>>()

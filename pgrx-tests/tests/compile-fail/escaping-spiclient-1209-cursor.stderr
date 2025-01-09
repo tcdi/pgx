@@ -4,7 +4,7 @@ error: lifetime may not live long enough
 8  |       let mut res = Spi::connect(|c| {
    |                                   -- return type of closure is SpiTupleTable<'2>
    |                                   |
-   |                                   has type `SpiClient<'1>`
+   |                                   has type `&SpiClient<'1>`
 9  | /         c.open_cursor("select 'hello world' from generate_series(1, 1000)", &[])
 10 | |             .fetch(1000)
 11 | |             .unwrap()
@@ -31,7 +31,7 @@ error: lifetime may not live long enough
    |                       -- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ returning this value requires that `'1` must outlive `'2`
    |                       ||
    |                       |return type of closure is SpiTupleTable<'2>
-   |                       has type `SpiClient<'1>`
+   |                       has type `&SpiClient<'1>`
 
 error[E0515]: cannot return value referencing temporary value
   --> tests/compile-fail/escaping-spiclient-1209-cursor.rs:16:26

@@ -202,7 +202,7 @@ mod tests {
         Spi::run("SET test.no_show TO false;").expect("SPI failed");
         Spi::run("SET test.no_reset_all TO false;").expect("SPI failed");
         assert_eq!(GUC_NO_RESET_ALL.get(), false);
-        Spi::connect(|mut client| {
+        Spi::connect_mut(|client| {
             let r = client.update("SHOW ALL", None, &[]).expect("SPI failed");
 
             let mut no_reset_guc_in_show_all = false;
