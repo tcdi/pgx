@@ -116,3 +116,8 @@ mod nightly {
         }
     }
 }
+/// A type pallocated in a context.
+pub struct InCx<'mcx, T>(T, PhantomData<MemCx<'mcx>>);
+
+/// An "owning" palloc.
+pub struct Palloc<'mcx, T>(T, &'mcx MemCx<'mcx>);
