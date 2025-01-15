@@ -23,6 +23,7 @@ mod tests {
 
         struct TestHook {
             events: u32,
+            accesses: u32,
         }
         impl PgHooks for TestHook {
             /// Hook before the logs are being processed by PostgreSQL itself
@@ -121,14 +122,41 @@ mod tests {
                 self.events += 1;
                 prev_hook(parse_state, query, jumble_state)
             }
+
+            fn object_access_hook(
+                &mut self,
+                access: pg_sys::ObjectAccessType,
+                class_id: pg_sys::Oid,
+                object_id: pg_sys::Oid,
+                sub_id: ::std::os::raw::c_int,
+                arg: *mut ::std::os::raw::c_void,
+                prev_hook: fn(
+                    access: pg_sys::ObjectAccessType,
+                    class_id: pg_sys::Oid,
+                    object_id: pg_sys::Oid,
+                    sub_id: ::std::os::raw::c_int,
+                    arg: *mut ::std::os::raw::c_void,
+                ) -> HookResult<()>,
+            ) -> HookResult<()> {
+                if access == pg_sys::ObjectAccessType_OAT_POST_CREATE {
+                    self.accesses += 1;
+                }
+                prev_hook(access, class_id, object_id, sub_id, arg)
+            }
         }
 
-        static mut HOOK: TestHook = TestHook { events: 0 };
+        Spi::run("CREATE TABLE test_hooks_table (bar int)").expect("SPI failed");
+
+        static mut HOOK: TestHook = TestHook { events: 0, accesses: 0 };
         pgrx::hooks::register_hook(&mut HOOK);
         // To trigger the emit_log hook, we need something to log.
         // We therefore ensure the select statement will be logged.
-        Spi::run("SET local log_statement to 'all'; SELECT 1").expect("SPI failed");
+        Spi::run("SET local log_statement to 'all'; SELECT * from test_hooks_table")
+            .expect("SPI failed");
         assert_eq!(8, HOOK.events);
+
+        Spi::run("ALTER table test_hooks_table add column baz boolean").expect("SPI failed");
+        assert_eq!(1, HOOK.accesses);
 
         // TODO:  it'd be nice to also test that .commit() and .abort() also get called
         //    but I don't see how to do that since we're running *inside* a transaction here

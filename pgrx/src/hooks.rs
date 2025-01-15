@@ -182,6 +182,24 @@ pub trait PgHooks {
         prev_hook(pstate, query, jumble_state)
     }
 
+    fn object_access_hook(
+        &mut self,
+        access: pg_sys::ObjectAccessType,
+        class_id: pg_sys::Oid,
+        object_id: pg_sys::Oid,
+        sub_id: ::std::os::raw::c_int,
+        arg: *mut ::std::os::raw::c_void,
+        prev_hook: fn(
+            access: pg_sys::ObjectAccessType,
+            class_id: pg_sys::Oid,
+            object_id: pg_sys::Oid,
+            sub_id: ::std::os::raw::c_int,
+            arg: *mut ::std::os::raw::c_void,
+        ) -> HookResult<()>,
+    ) -> HookResult<()> {
+        prev_hook(access, class_id, object_id, sub_id, arg)
+    }
+
     /// Called when the transaction aborts
     fn abort(&mut self) {}
 
@@ -200,6 +218,7 @@ struct Hooks {
     prev_process_utility_hook: pg_sys::ProcessUtility_hook_type,
     prev_planner_hook: pg_sys::planner_hook_type,
     prev_post_parse_analyze_hook: pg_sys::post_parse_analyze_hook_type,
+    prev_object_access_hook: pg_sys::object_access_hook_type,
 }
 
 static mut HOOKS: Option<Hooks> = None;
@@ -243,6 +262,7 @@ pub unsafe fn register_hook(hook: &'static mut (dyn PgHooks)) {
         prev_post_parse_analyze_hook: pg_sys::post_parse_analyze_hook
             .replace(pgrx_post_parse_analyze),
         prev_emit_log_hook: pg_sys::emit_log_hook.replace(pgrx_emit_log),
+        prev_object_access_hook: pg_sys::object_access_hook.replace(pgrx_object_access_hook),
     });
 
     #[pg_guard]
@@ -624,6 +644,33 @@ unsafe extern "C" fn pgrx_emit_log(error_data: *mut pg_sys::ErrorData) {
 
     let hook = &mut HOOKS.as_mut().unwrap().current_hook;
     hook.emit_log(PgBox::from_pg(error_data), prev).inner
+}
+
+#[pg_guard]
+unsafe extern "C" fn pgrx_object_access_hook(
+    access: pg_sys::ObjectAccessType,
+    class_id: pg_sys::Oid,
+    object_id: pg_sys::Oid,
+    sub_id: ::std::os::raw::c_int,
+    arg: *mut ::std::os::raw::c_void,
+) {
+    fn prev(
+        access: pg_sys::ObjectAccessType,
+        class_id: pg_sys::Oid,
+        object_id: pg_sys::Oid,
+        sub_id: ::std::os::raw::c_int,
+        arg: *mut ::std::os::raw::c_void,
+    ) -> HookResult<()> {
+        HookResult::new(unsafe {
+            match HOOKS.as_mut().unwrap().prev_object_access_hook.as_ref() {
+                None => (),
+                Some(f) => (f)(access, class_id, object_id, sub_id, arg),
+            }
+        })
+    }
+
+    let hook = &mut HOOKS.as_mut().unwrap().current_hook;
+    hook.object_access_hook(access, class_id, object_id, sub_id, arg, prev).inner
 }
 
 #[pg_guard]
