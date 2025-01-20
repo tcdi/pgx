@@ -25,6 +25,17 @@ mod tests {
             events: u32,
         }
         impl PgHooks for TestHook {
+
+            fn client_authentication(
+                &mut self,
+                port: PgBox<Port>,
+                status: i32,
+                prev_hook: fn(port: PgBox<Port>, status: i32) -> HookResult<()>,
+            ) -> HookResult<()> {
+                self.events += 1;
+                prev_hook(port, status)
+            }
+
             /// Hook before the logs are being processed by PostgreSQL itself
             fn emit_log(
                 &mut self,
@@ -128,7 +139,7 @@ mod tests {
         // To trigger the emit_log hook, we need something to log.
         // We therefore ensure the select statement will be logged.
         Spi::run("SET local log_statement to 'all'; SELECT 1").expect("SPI failed");
-        assert_eq!(8, HOOK.events);
+        assert_eq!(9, HOOK.events);
 
         // TODO:  it'd be nice to also test that .commit() and .abort() also get called
         //    but I don't see how to do that since we're running *inside* a transaction here

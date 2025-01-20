@@ -48,6 +48,15 @@ impl<T> Deref for HookResult<T> {
 }
 
 pub trait PgHooks {
+    fn client_authentication(
+        &mut self,
+        port: PgBox<pg_sys::Port>,
+        status: i32,
+        prev_hook: fn(port: PgBox<pg_sys::Port>, status: i32) -> HookResult<()>,
+    ) -> HookResult<()> {
+        prev_hook(port, status)
+    }
+
     /// Hook before the logs are being processed by PostgreSQL itself
     fn emit_log(
         &mut self,
@@ -191,6 +200,7 @@ pub trait PgHooks {
 
 struct Hooks {
     current_hook: Box<&'static mut (dyn PgHooks)>,
+    client_authentication: pg_sys::ClientAuthentication_hook_type,
     prev_emit_log_hook: pg_sys::emit_log_hook_type,
     prev_executor_start_hook: pg_sys::ExecutorStart_hook_type,
     prev_executor_run_hook: pg_sys::ExecutorRun_hook_type,
@@ -243,6 +253,7 @@ pub unsafe fn register_hook(hook: &'static mut (dyn PgHooks)) {
         prev_post_parse_analyze_hook: pg_sys::post_parse_analyze_hook
             .replace(pgrx_post_parse_analyze),
         prev_emit_log_hook: pg_sys::emit_log_hook.replace(pgrx_emit_log),
+        client_authentication: pg_sys::ClientAuthentication_hook.replace(pgrx_client_auth),
     });
 
     #[pg_guard]
@@ -495,6 +506,26 @@ unsafe extern "C" fn pgrx_planner(
     feature = "pg16",
     feature = "pg17"
 ))]
+#[pg_guard]
+unsafe extern "C" fn pgrx_client_auth(
+    port: *mut pg_sys::Port,
+    status: i32
+) {
+    fn prev(port: PgBox<pg_sys::Port>, status: i32) -> HookResult<()> {
+        HookResult::new(unsafe {
+            match HOOKS.as_mut().unwrap().client_authentication.as_ref() {
+                None => (),
+                Some(f) => (f)(port.as_ptr(), status),
+            }
+        })
+    }
+
+    let hook = &mut HOOKS.as_mut().unwrap().current_hook;
+    hook.client_authentication(PgBox::from_pg(port), status, prev).inner
+}
+
+
+#[cfg(any(feature = "pg13", feature = "pg14", feature = "pg15", feature = "pg16"))]
 #[pg_guard]
 unsafe extern "C" fn pgrx_planner(
     parse: *mut pg_sys::Query,
