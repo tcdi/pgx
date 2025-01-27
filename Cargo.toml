@@ -78,7 +78,7 @@ toml = "0.8" # our config files
 toml_edit = "0.19.14" # format-preserving edits to toml files, used with cargo-edit
 thiserror = "1"
 unescape = "0.1.0" # for escaped-character-handling
-url = "2.4.1" # the non-existent std::web
+url = "2.5.4" # the non-existent std::web
 walkdir = "2" # directory recursion
 
 [profile.dev]
