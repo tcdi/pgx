@@ -20,8 +20,8 @@ mod client;
 mod cursor;
 mod query;
 mod tuple;
-pub use client::SpiClient;
 use client::SpiConnection;
+pub use client::{SpiClient, SpiTransaction};
 pub use cursor::SpiCursor;
 pub use query::{OwnedPreparedStatement, PreparedStatement, Query};
 pub use tuple::{SpiHeapTupleData, SpiHeapTupleDataEntry, SpiTupleTable};
@@ -387,6 +387,24 @@ impl Spi {
         // If there's a panic or elog(ERROR), we don't care about also disconnecting from
         // SPI b/c Postgres will do that for us automatically
         f(connection.client())
+    }
+
+    /// Execute SPI commands via the provided `SpiClient` on a non-atomic connection.
+    ///
+    /// While inside the provided closure, code executes under a short-lived "SPI Memory Context",
+    /// and Postgres will completely free that context when this function is finished.
+    ///
+    /// pgrx' SPI API endeavors to return Datum values from functions like `::get_one()` that are
+    /// automatically copied into the into the `CurrentMemoryContext` at the time of this
+    /// function call.
+    pub fn connect_non_atomic<R, F>(f: F) -> R
+    where
+        F: FnOnce(SpiClient<'_>, SpiTransaction<'_>) -> R,
+    {
+        let connection = SpiConnection::connect_non_atomic()
+            .expect("SPI_connect_ext indicated an unexpected failure");
+
+        f(connection.client(), connection.transaction())
     }
 
     #[track_caller]

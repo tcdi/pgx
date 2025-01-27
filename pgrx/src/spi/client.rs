@@ -170,6 +170,11 @@ impl SpiConnection {
         Spi::check_status(unsafe { pg_sys::SPI_connect() })?;
         Ok(SpiConnection(PhantomData))
     }
+
+    pub(super) fn connect_non_atomic() -> SpiResult<Self> {
+        Spi::check_status(unsafe { pg_sys::SPI_connect_ext(pg_sys::SPI_OPT_NONATOMIC as i32) })?;
+        Ok(SpiConnection(PhantomData))
+    }
 }
 
 impl Drop for SpiConnection {
@@ -186,5 +191,40 @@ impl SpiConnection {
     /// Return a client that with a lifetime scoped to this connection.
     pub(super) fn client(&self) -> SpiClient<'_> {
         SpiClient { __marker: PhantomData }
+    }
+
+    pub(super) fn transaction(&self) -> SpiTransaction<'_> {
+        SpiTransaction { _conn: PhantomData }
+    }
+}
+
+/// Represents an SPI transaction.
+pub struct SpiTransaction<'conn> {
+    _conn: PhantomData<&'conn SpiConnection>,
+}
+
+impl<'conn> SpiTransaction<'conn> {
+    /// Commits back the transaction and starts a new `SpiTransaction` with default transaction characteristics.
+    pub fn commit(self) -> Self {
+        unsafe { pg_sys::SPI_commit() };
+        self
+    }
+
+    /// Commits back the transaction and starts a new `SpiTransaction` with the same characteristics as the just finished one.
+    pub fn commit_and_chain(self) -> Self {
+        unsafe { pg_sys::SPI_commit_and_chain() };
+        self
+    }
+
+    /// Rolls back the transaction and starts a new `SpiTransaction` with default transaction characteristics.
+    pub fn rollback(self) -> Self {
+        unsafe { pg_sys::SPI_rollback() };
+        self
+    }
+
+    /// Rolls back the transaction and starts a new `SpiTransaction` with the same characteristics as the just finished one.
+    pub fn rollback_and_chain(self) -> Self {
+        unsafe { pg_sys::SPI_rollback_and_chain() };
+        self
     }
 }
