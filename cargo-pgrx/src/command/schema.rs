@@ -409,7 +409,7 @@ fn compute_codegen(
         for name in symbols.iter() {
             let name_ident = Ident::new(name, Span::call_site());
             out.extend(quote::quote! {
-                extern "Rust" {
+                unsafe extern "Rust" {
                     fn #name_ident() -> ::pgrx::pgrx_sql_entity_graph::SqlGraphEntity;
                 }
                 let entity = unsafe { #name_ident() };
