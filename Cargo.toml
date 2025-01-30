@@ -63,7 +63,7 @@ pgrx-bindgen = { path = "./pgrx-bindgen", version = "0.12.9" }
 
 cargo_metadata = "0.18.0"
 cargo-edit = "0.12.2" # format-preserving edits to cargo.toml
-cargo_toml = "0.19" # used for building projects
+cargo_toml = "0.21" # used for building projects
 clap-cargo = { version = "0.14.0", features = [ "cargo_metadata" ] }
 eyre = "~0.6.12" # simplifies error-handling
 libc = "0.2" # FFI compat
