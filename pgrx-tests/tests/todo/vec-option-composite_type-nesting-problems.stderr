@@ -45,7 +45,7 @@ error[E0277]: the trait bound `Vec<Option<pgrx::prelude::PgHeapTuple<'_, pgrx::A
    | ------------ in this procedural macro expansion
 88 | fn sum_scritches_for_names_optional_items(
 89 |     dogs: Option<Vec<Option<pgrx::composite_type!("Dog")>>>,
-   |     ^^^^ the trait `ArgAbi<'_>` is not implemented for `Vec<Option<pgrx::prelude::PgHeapTuple<'_, pgrx::AllocatedByRust>>>`, which is required by `Option<Vec<Option<pgrx::prelude::PgHeapTuple<'_, pgrx::AllocatedByRust>>>>: ArgAbi<'_>`
+   |     ^^^^ the trait `ArgAbi<'_>` is not implemented for `Vec<Option<pgrx::prelude::PgHeapTuple<'_, pgrx::AllocatedByRust>>>`
    |
    = help: the following other types implement trait `ArgAbi<'fcx>`:
              Vec<Option<T>>
