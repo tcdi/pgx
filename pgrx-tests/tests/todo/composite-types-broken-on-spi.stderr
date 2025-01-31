@@ -45,7 +45,7 @@ error[E0277]: the trait bound `Vec<Option<pgrx::prelude::PgHeapTuple<'_, pgrx::A
    |     ------------ in this procedural macro expansion
 96 |     fn sum_scritches_for_names_optional_items(
 97 |         dogs: Option<Vec<Option<pgrx::composite_type!("Dog")>>>,
-   |         ^^^^ the trait `ArgAbi<'_>` is not implemented for `Vec<Option<pgrx::prelude::PgHeapTuple<'_, pgrx::AllocatedByRust>>>`, which is required by `Option<Vec<Option<pgrx::prelude::PgHeapTuple<'_, pgrx::AllocatedByRust>>>>: ArgAbi<'_>`
+   |         ^^^^ the trait `ArgAbi<'_>` is not implemented for `Vec<Option<pgrx::prelude::PgHeapTuple<'_, pgrx::AllocatedByRust>>>`
    |
    = help: the following other types implement trait `ArgAbi<'fcx>`:
              Vec<Option<T>>
@@ -66,7 +66,7 @@ error[E0277]: `Array<'_, pgrx::prelude::PgHeapTuple<'_, pgrx::AllocatedByRust>>`
     |                    ^^^^ `Array<'_, pgrx::prelude::PgHeapTuple<'_, pgrx::AllocatedByRust>>` is not an iterator
     |
     = help: the trait `IntoIterator` is not implemented for `Array<'_, pgrx::prelude::PgHeapTuple<'_, pgrx::AllocatedByRust>>`
-    = help: the trait `IntoIterator` is implemented for `Array<'_, pgrx::prelude::PgHeapTuple<'_, pgrx::AllocatedByRust>>`
+            but trait `IntoIterator` is implemented for it
 
 error[E0277]: `Array<'_, pgrx::prelude::PgHeapTuple<'_, pgrx::AllocatedByRust>>` is not an iterator
    --> tests/todo/composite-types-broken-on-spi.rs:145:20
@@ -75,7 +75,7 @@ error[E0277]: `Array<'_, pgrx::prelude::PgHeapTuple<'_, pgrx::AllocatedByRust>>`
     |                    ^^^^ `Array<'_, pgrx::prelude::PgHeapTuple<'_, pgrx::AllocatedByRust>>` is not an iterator
     |
     = help: the trait `IntoIterator` is not implemented for `Array<'_, pgrx::prelude::PgHeapTuple<'_, pgrx::AllocatedByRust>>`
-    = help: the trait `IntoIterator` is implemented for `Array<'_, pgrx::prelude::PgHeapTuple<'_, pgrx::AllocatedByRust>>`
+            but trait `IntoIterator` is implemented for it
 
 error[E0277]: `Array<'_, pgrx::prelude::PgHeapTuple<'_, pgrx::AllocatedByRust>>` is not an iterator
    --> tests/todo/composite-types-broken-on-spi.rs:162:20
@@ -84,7 +84,7 @@ error[E0277]: `Array<'_, pgrx::prelude::PgHeapTuple<'_, pgrx::AllocatedByRust>>`
     |                    ^^^^ `Array<'_, pgrx::prelude::PgHeapTuple<'_, pgrx::AllocatedByRust>>` is not an iterator
     |
     = help: the trait `IntoIterator` is not implemented for `Array<'_, pgrx::prelude::PgHeapTuple<'_, pgrx::AllocatedByRust>>`
-    = help: the trait `IntoIterator` is implemented for `Array<'_, pgrx::prelude::PgHeapTuple<'_, pgrx::AllocatedByRust>>`
+            but trait `IntoIterator` is implemented for it
 
 error[E0308]: mismatched types
   --> tests/todo/composite-types-broken-on-spi.rs:11:5
