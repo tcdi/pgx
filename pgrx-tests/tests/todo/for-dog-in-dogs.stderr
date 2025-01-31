@@ -5,7 +5,7 @@ error[E0277]: `pgrx::VariadicArray<'_, pgrx::prelude::PgHeapTuple<'_, pgrx::Allo
    |                ^^^^ `pgrx::VariadicArray<'_, pgrx::prelude::PgHeapTuple<'_, pgrx::AllocatedByRust>>` is not an iterator
    |
    = help: the trait `IntoIterator` is not implemented for `pgrx::VariadicArray<'_, pgrx::prelude::PgHeapTuple<'_, pgrx::AllocatedByRust>>`
-   = help: the trait `IntoIterator` is implemented for `pgrx::VariadicArray<'_, pgrx::prelude::PgHeapTuple<'_, pgrx::AllocatedByRust>>`
+           but trait `IntoIterator` is implemented for it
 
 error[E0277]: `pgrx::VariadicArray<'_, pgrx::prelude::PgHeapTuple<'_, pgrx::AllocatedByRust>>` is not an iterator
   --> tests/todo/for-dog-in-dogs.rs:32:16
@@ -14,7 +14,7 @@ error[E0277]: `pgrx::VariadicArray<'_, pgrx::prelude::PgHeapTuple<'_, pgrx::Allo
    |                ^^^^ `pgrx::VariadicArray<'_, pgrx::prelude::PgHeapTuple<'_, pgrx::AllocatedByRust>>` is not an iterator
    |
    = help: the trait `IntoIterator` is not implemented for `pgrx::VariadicArray<'_, pgrx::prelude::PgHeapTuple<'_, pgrx::AllocatedByRust>>`
-   = help: the trait `IntoIterator` is implemented for `pgrx::VariadicArray<'_, pgrx::prelude::PgHeapTuple<'_, pgrx::AllocatedByRust>>`
+           but trait `IntoIterator` is implemented for it
 
 error[E0277]: `pgrx::VariadicArray<'_, pgrx::prelude::PgHeapTuple<'_, pgrx::AllocatedByRust>>` is not an iterator
   --> tests/todo/for-dog-in-dogs.rs:48:16
@@ -23,7 +23,7 @@ error[E0277]: `pgrx::VariadicArray<'_, pgrx::prelude::PgHeapTuple<'_, pgrx::Allo
    |                ^^^^ `pgrx::VariadicArray<'_, pgrx::prelude::PgHeapTuple<'_, pgrx::AllocatedByRust>>` is not an iterator
    |
    = help: the trait `IntoIterator` is not implemented for `pgrx::VariadicArray<'_, pgrx::prelude::PgHeapTuple<'_, pgrx::AllocatedByRust>>`
-   = help: the trait `IntoIterator` is implemented for `pgrx::VariadicArray<'_, pgrx::prelude::PgHeapTuple<'_, pgrx::AllocatedByRust>>`
+           but trait `IntoIterator` is implemented for it
 
 error[E0277]: `Array<'_, pgrx::prelude::PgHeapTuple<'_, pgrx::AllocatedByRust>>` is not an iterator
   --> tests/todo/for-dog-in-dogs.rs:65:16
@@ -32,7 +32,7 @@ error[E0277]: `Array<'_, pgrx::prelude::PgHeapTuple<'_, pgrx::AllocatedByRust>>`
    |                ^^^^ `Array<'_, pgrx::prelude::PgHeapTuple<'_, pgrx::AllocatedByRust>>` is not an iterator
    |
    = help: the trait `IntoIterator` is not implemented for `Array<'_, pgrx::prelude::PgHeapTuple<'_, pgrx::AllocatedByRust>>`
-   = help: the trait `IntoIterator` is implemented for `Array<'_, pgrx::prelude::PgHeapTuple<'_, pgrx::AllocatedByRust>>`
+           but trait `IntoIterator` is implemented for it
 
 error[E0277]: `Array<'_, pgrx::prelude::PgHeapTuple<'_, pgrx::AllocatedByRust>>` is not an iterator
   --> tests/todo/for-dog-in-dogs.rs:85:16
@@ -41,7 +41,7 @@ error[E0277]: `Array<'_, pgrx::prelude::PgHeapTuple<'_, pgrx::AllocatedByRust>>`
    |                ^^^^ `Array<'_, pgrx::prelude::PgHeapTuple<'_, pgrx::AllocatedByRust>>` is not an iterator
    |
    = help: the trait `IntoIterator` is not implemented for `Array<'_, pgrx::prelude::PgHeapTuple<'_, pgrx::AllocatedByRust>>`
-   = help: the trait `IntoIterator` is implemented for `Array<'_, pgrx::prelude::PgHeapTuple<'_, pgrx::AllocatedByRust>>`
+           but trait `IntoIterator` is implemented for it
 
 error[E0277]: `Array<'_, pgrx::prelude::PgHeapTuple<'_, pgrx::AllocatedByRust>>` is not an iterator
    --> tests/todo/for-dog-in-dogs.rs:102:16
@@ -50,4 +50,4 @@ error[E0277]: `Array<'_, pgrx::prelude::PgHeapTuple<'_, pgrx::AllocatedByRust>>`
     |                ^^^^ `Array<'_, pgrx::prelude::PgHeapTuple<'_, pgrx::AllocatedByRust>>` is not an iterator
     |
     = help: the trait `IntoIterator` is not implemented for `Array<'_, pgrx::prelude::PgHeapTuple<'_, pgrx::AllocatedByRust>>`
-    = help: the trait `IntoIterator` is implemented for `Array<'_, pgrx::prelude::PgHeapTuple<'_, pgrx::AllocatedByRust>>`
+            but trait `IntoIterator` is implemented for it

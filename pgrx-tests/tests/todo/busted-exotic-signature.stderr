@@ -5,7 +5,7 @@ error[E0277]: the trait bound `Vec<Option<PgHeapTuple<'_, AllocatedByRust>>>: Ar
    |     ------------ in this procedural macro expansion
 11 |     fn exotic_signature(
 12 |         _cats: pgrx::default!(
-   |         ^^^^^ the trait `ArgAbi<'_>` is not implemented for `Vec<Option<PgHeapTuple<'_, AllocatedByRust>>>`, which is required by `Option<Vec<Option<PgHeapTuple<'_, AllocatedByRust>>>>: ArgAbi<'_>`
+   |         ^^^^^ the trait `ArgAbi<'_>` is not implemented for `Vec<Option<PgHeapTuple<'_, AllocatedByRust>>>`
    |
    = help: the following other types implement trait `ArgAbi<'fcx>`:
              Vec<Option<T>>
