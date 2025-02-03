@@ -12,7 +12,7 @@ pub(crate) mod pgrx_target;
 
 /// Commands having to do with cross-compilation. (Experimental)
 #[derive(clap::Args, Debug)]
-#[clap(about, author)]
+#[clap(author)]
 pub(crate) struct Cross {
     #[command(subcommand)]
     pub(crate) subcommand: CargoPgrxCrossSubCommands,
