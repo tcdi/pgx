@@ -42,7 +42,7 @@ Commands:
   connect       Connect, via psql, to a Postgres instance
   test          Run the test suite for this crate
   get           Get a property from the extension control file
-  cross         Cargo subcommand for 'pgrx' to make Postgres extension development easy
+  cross         Commands having to do with cross-compilation. (Experimental)
   help          Print this message or the help of the given subcommand(s)
 
 Options:
